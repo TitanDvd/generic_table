@@ -17,6 +17,8 @@ class ServiceProvider extends SupportServiceProvider
         Livewire::component('generic_table', Table::class);
         Blade::directive('generic_table', function(string $expression) {
             
+            $uuid = 'generic-table-a'.uniqid();
+
             if(empty($expression)) {
                 throw new Exception('You need to specify fully qualified class name (FQCN) in order to mount the generic component via blade directive. Example: `@generic_component(FQCN:string, autoLoadAttributes:bool)`');
             }
@@ -26,7 +28,7 @@ class ServiceProvider extends SupportServiceProvider
             $tableFqn = trim($slots[0]);
             $args = isset($slots[1]) ? trim($slots[1]) : '[]';
 
-            return "<?=Livewire::mount('Mmt\GenericTable\Table', ['table' => $tableFqn, 'args' => $args]);?>";
+            return "<?=Livewire::mount('Mmt\GenericTable\Table', ['table' => $tableFqn, 'args' => $args], '$uuid');?>";
         });
     }
 
