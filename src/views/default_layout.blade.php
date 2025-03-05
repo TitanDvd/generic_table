@@ -1,0 +1,1 @@
+@yield('generic_table_section')
