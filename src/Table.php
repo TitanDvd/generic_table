@@ -64,7 +64,7 @@ class Table extends LivewireComponent
     public array $indexedRelationships = [];
     public bool $isActionColumnActive = false;
     public array $injectedArguments = [];
-    public $listeners = ['refresh' => '$refresh'];
+    public $listeners = ['refresh_generic_table' => '$refresh'];
 
     
     final protected int $paginationRack = 0;

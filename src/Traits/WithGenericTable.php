@@ -6,6 +6,6 @@ trait WithGenericTable
 {
     public function refreshGenericTable()
     {
-        $this->dispatch('refresh')->self();
+        $this->dispatch('refresh_generic_table');
     }
 }
