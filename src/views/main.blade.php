@@ -256,7 +256,7 @@
             $isAllowSorting = fn($column, $isReordering) => $column->isSorteable() == true && $isReordering == false; 
         @endphp
 
-        <div class="col-12 px-0 overflow-auto mb-3">
+        <div class="col-12 px-0 overflow-auto mb-3 position-relative">
             @if($this->tableItems->count() == 0)
                 <div class="mx-3">
                     <div class="alert alert-warning text-center m-0 p-3">
@@ -264,7 +264,14 @@
                     </div>
                 </div>
             @else
-            
+                <div class="position-absolute top-0 start-0 w-100 h-100" style="display:none; background: rgba(0, 0, 0, 0.5)" id = "generic_table_loader">
+                    <div class="d-flex h-100">
+                        <div class="m-auto d-flex flex-column">
+                            <div class="spinner-border mx-auto text-warning" role="status"></div>
+                            <div class="text-white">Loading</div>
+                        </div>
+                    </div>
+                </div>
                 <table class="table m-0" id ="generic_table">
                     <thead>
 
@@ -405,14 +412,13 @@
         @endif
     </div>
     
-    
     <script src ="{{ route('generic_table_js', ['filename' => 'dragula.min.js']) }}"  type="text/javascript"></script>
     <script src ="{{ route('generic_table_js', ['filename' => 'tableDragDrop.js']) }}"  type="text/javascript"></script>
     <script>
         /** Global scope of the bulk action method name */
         let bulkActionMethodName = null;
 
-        document.addEventListener('livewire:init', () => {
+        document.addEventListener('livewire:initialized', () => {
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
@@ -420,6 +426,17 @@
                 @this.tableReOrderCompleted(args.order, args.data)
             });
 
+            let toggleLoader = () => {
+                let loader = document.querySelector('#generic_table_loader');
+                if(loader) {
+                    if(loader.style.display === 'none') {
+                        loader.style.display = 'block';
+                    }
+                    else {
+                        loader.style.display = 'none';
+                    }
+                }
+            }
 
             /** Dispatchs the event to a confirmation modal */
             Livewire.on('dispatchBulkEvent', ({dispatcher, requireConfirmation})=>{
@@ -443,6 +460,15 @@
             Livewire.on('genericTableHandleOrdering', () => {
                 @this.genericSystemTableHandleOrdering();
             })
+
+            Livewire.hook('commit', ({ component, commit, respond, succeed, fail }) => {
+                
+                toggleLoader();
+            
+                respond(() => {
+                    toggleLoader();
+                })
+            });
         });
 
         

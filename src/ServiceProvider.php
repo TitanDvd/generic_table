@@ -6,7 +6,6 @@ use Exception;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider as SupportServiceProvider;
 use Livewire\Livewire;
-use Str;
 
 class ServiceProvider extends SupportServiceProvider
 {

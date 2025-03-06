@@ -2,7 +2,7 @@
 
 namespace Mmt\GenericTable\Interfaces;
 
-use Mmt\GenericTable\Enums\EventType;
+use Mmt\GenericTable\Support\EventArgs;
 
 interface IEvent
 {
@@ -11,5 +11,5 @@ interface IEvent
      * A callback for each trigered event on generic table system
      * 
      */
-    public function dispatchCallback(EventType $eventType, &$params) : void;
+    public function dispatchCallback(EventArgs $arguments) : void;
 }

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Livewire\Attributes\On;
 use Livewire\Component as LivewireComponent;
 use Livewire\WithPagination;
 use Mmt\GenericTable\Attributes\CellFormatter;
@@ -20,10 +21,11 @@ use Mmt\GenericTable\Components\Column;
 use Mmt\GenericTable\Components\TableFilterCollection;
 use Mmt\GenericTable\Components\TableFilterItem;
 use Mmt\GenericTable\Enums\ColumnSettingFlags;
-use Mmt\GenericTable\Enums\EventType;
 use Mmt\GenericTable\Enums\FilterType;
 use Mmt\GenericTable\Enums\PaginationRack;
 use Mmt\GenericTable\Interfaces\{IActionColumn, IDragDropReordering, IEvent, IExportable,IGenericTable,IPaginationRack, IRowsPerPage, IBulkAction };
+use Mmt\GenericTable\Support\DatabaseEvent;
+use Mmt\GenericTable\Support\EventArgs;
 use Mmt\GenericTable\Support\ExportEventArgs;
 use Mmt\GenericTable\Support\ExportSettings;
 use Mmt\GenericTable\Traits\WithBulkActions;
@@ -149,7 +151,10 @@ class Table extends LivewireComponent
 
     public function mount(string $table, array $args = [])
     {
-        $this->injectedArguments = $args;
+        foreach ($args as $key => $value) {
+            $this->injectedArguments[$key] = $value;
+        }
+
         $this->tableClass = $table;
         
         $this->initializingComponent();
@@ -286,12 +291,12 @@ class Table extends LivewireComponent
 
         if($this->tableObject instanceof IEvent) {
             
-            $args = [
-                'injectedArguments' => $this->injectedArguments,
-                'queryBuilder' => $query
-            ];
+            $eventArgs = new DatabaseEvent(
+                $query,
+                $this->injectedArguments
+            );
 
-            $this->tableObject->dispatchCallback(EventType::START_PROCESS_QUERY_CALLBACK, $args);
+            $this->tableObject->dispatchCallback($eventArgs);
         }
         
         if($this->dragDropUseColumn != '' && $this->useDragDropReordering == true && $this->isReordering == true) {
@@ -800,15 +805,41 @@ class Table extends LivewireComponent
         return $filter->type == FilterType::MULTI_SELECTION;
     }
     
+    /**
+     * 
+     * This method can be use as a proxy between table definition
+     * and wire events from the views injected in generic table 
+     * 
+     */
     public function dispatcher($params)
     {
         if($this->tableObject instanceof IEvent) {
-            $this->tableObject->dispatchCallback(EventType::CUSTOM, $params);
+            $this->tableObject->dispatchCallback(
+                new EventArgs($params)
+            );
         }
     }
 
     public function genericSystemTableHandleOrdering()
     {
         $this->isReordering = !$this->isReordering;
+    }
+
+    /**
+     * 
+     * Remember, only wireable data can be injected
+     * 
+     */
+    #[On('injectParams')]
+    public function injectParams($params)
+    {
+        if(is_array($params)) {
+            foreach ($params as $key => $value) {
+                $this->injectedArguments[$key] = $value;
+            }
+        }
+        else {
+            $this->injectedArguments = $params;
+        }
     }
 }
