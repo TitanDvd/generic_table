@@ -1,31 +1,32 @@
-# Introduction
-Generic table is the way you need to work with tables.
-Define only what you need and all that you needs is covered by the interface design pattern.
+# Generic Table: Laravel+Livewire package to automatize HTML tables
 
-# Requirements
+## Introduction
+Generic Table is a package that makes working with tables in Laravel + Livewire easier. It was developed with performance in mind. The main reason behind the project is working with the interface design pattern to segregate responsibilities. From my perspective, table logic should be in its own place.
+
+
+## Requirements
 1. PHP <b>8.4</b>
 2. Laravel >= 11.x
 3. Livewire >= 3.x
 4. Bootstrap 5.x
 
-# How to install
+## How to install
 `composer require mmt/generic_table`
 
-# Features
+## Features
 - Drag and drop rows to simplify reordering. (using [Dragula Js][1])
-- Classic column reorder.
+- Classic column reordering.
 - Bind the entire column to a laravel route.
-- Create action columns. Customize it using blade views
-- Filter by mutually exclusive values or inclusives ones.
+- Create action columns. Customize them using blade views
+- Filter by mutually exclusive or inclusives values.
 - Search by any column
-- Use relationships in columns to bind the column with a relationship value.
+- Use relationships on columns to link the column with a relationship value.
 - and more...
- 
 
-# Basic Usage
-## First, the `Generic Table Definition`
-With the following snippet your were creating the table definition that you
-will be passing later to the `@generic_table()` blade's directive.
+## Basic Usage
+### First, the `Generic Table Definition`
+With the following code snippet your are creating the table definition that you
+will later will pass to the blade directive `@generic_table()`.
 ```php
 <?php
 
@@ -43,7 +44,7 @@ class ProductTable implements IGenericTable
 }
 ```
 
-## Second, the livewire component
+### Second, the livewire component
 Now, create an accessible livewire component...
 
 ```php
@@ -55,28 +56,28 @@ public function render()
 }
 // ...
 ```
-Then, in the view use the `@generic_table()` directive as follow:
+Then, in the view use the `@generic_table()` directive as follows:
 ```html
 <div>
     @generic_table($table)
 </div>
 ```
 
-And thats it!
+And that's it!
 
-It's clear that the more features you need, the more set ups you need. By default `generic_table` will detect that if no column definition was made then: 
-1. All model attrbutes as intended to be public. 
-2. The attributes with sufix _id will be omitted from the public sight.
+It's clear that the more features you need, the more configurations you will need. By default `generic_table` will detect that if no column definition was made, then: 
+1. All attrbutes in the model are intended to be public. 
+2. Attributes with the _id suffix will be omitted from the public view.
 3. All columns are searchables
-4. Nothing is exportable
-5. Drag and drop ordering is disabled
+4. Nothing can be exported
+5. Drag and drop sorting is disabled
 6. All columns are sorteable
 
-# Interfaces
+## Interfaces
 The interface design pattern is the core of the project.
-With the use of several or all the available interfaces you will be able to control
+By using of several or all of the available interfaces you will be able to control
 every aspect of the generic table engine. From here I will try to give you a datailed
-break down of all interfaces existing at the moment.
+break down of all interfaces that exists at the moment.
 
 - [IGenericTable](#igenerictable)
 - [IBulkAction](#ibulkaction)
@@ -92,9 +93,9 @@ break down of all interfaces existing at the moment.
 - [ILoadingIndicator](#iloadingindicator)
 
 ## IGenericTable
-This is the main interface. Every class table that you want to define must implements
-`IGenericTable` interface. This interface has two properties declarations.
-1. `Model|string $model`. This property defines the model from which the engine will extract all the data from database, make filters or searches.
+This is the main interface. Every class table you want to define must implement the
+`IGenericTable` interface. This interface has two property declarations.
+1. `Model|string $model`. This property defines the model from which the engine will extract all the data from database, perform filters or searches.
 2. `ColumnCollection $columns`. This property defines the columns that will be used in the html output
 
 ```php
@@ -109,7 +110,7 @@ $this->columns = ColumnCollection::make(
     new Column('Stock')
 );
 ```
-`Column`'s constructor first argument is a string in representation of the label of the column, the second parameter is the `database column name` but, if there is no second argument, the engine will use the `snake case` of columns label for `database column name`. For example `SubDepartment` will be mapped to `sub_department` case using the `Str::snake()` method. Also you can use defined relationships to render the value of a column in the relationship. For example:
+The first argument of `Column` constructor is a string in representing the the column label, the second parameter is the `database column name` but, if there is no second argument, the engine will use the `snake case` of the column label for the `database column name`. For example `SubDepartment` will be mapped to `sub_department` case using the `Str::snake()` method. You can also use defined relationship columns. For example:
 ```php
 $this->columns = ColumnCollection::make(
 	new  Column('Id'),
@@ -120,7 +121,7 @@ $this->columns = ColumnCollection::make(
 	new  Column('SubDepartment', 'subDepartment.name'),
 );
 ```
-Some times you need to bind the entire column to a laravel route dinamically. For that case you can set up the column like:
+Some times you need to dinamically, bind the entire column to a laravel route. In that case you can configure the column as follows:
 ```php
 $this->columns = ColumnCollection::make(
 	new  Column('Id'),
@@ -134,11 +135,11 @@ $this->columns = ColumnCollection::make(
 	new  Column('SubDepartment', 'subDepartment.name'),
 );
 ```
-**`MappedRoute`** takes as first argument a defined ***(existing)*** route name. The second argument would be the parameters expected by that route and here an observation. See how the route parameters is configured...
-`['product_id' => ':id']` . In order to be possible for the engine determine what value passes to the route, you need to use a **`:binder`**. This tells the system which `database column value` use in the row to make the route work as expected. The third argument is the link label. If you leave the label empty, system will use the value of that cell to render the link label. Tha last argument is `HrefTarget $target` an `enum` to help you set the `target` attribute of `<a>` tag.
+**`MappedRoute`** takes its as first argument a defined ***(existing)*** route name. The second argument would be the parameters expected by that route and here's a note. See how the route parameters are set...
+`['product_id' => ':id']` . In order for the engine to be able to determine what value to pass to the route, you need to use a **`:binder`**. This tells the system what `database column value` to use in the row for the route work as expected. The third argument is the link label. If you leave the label empty, the system will use the value of that cell to represent the link label. The last argument is `HrefTarget $target` an `enum` to help you set the `target` attribute of the `<a>` tag.
 
 If you need to hide a column for some reason, here is how: Use `ColumnSettingsFlag`.
-In the following example you will find some other usefull flags for column configuration.
+In the example below you will find some other useful flags for column settings.
 ```php
 $this->columns = ColumnCollection::make(
 	new  Column('Id')->withSettings(
@@ -159,6 +160,7 @@ $this->columns = ColumnCollection::make(
 	new  Column('SubDepartment', 'subDepartment.name'),
 );
 ```
+
 ## IBulkAction
 
 The `IBulkAction` interface has one property declaration which is `BulkActionCollection $bulkActionCollection`. Its goal is to define the bulk action methods or group of methods. Group of methods can have nested groups. The html output will be a dropdown menu with nested dropdowns menus if needed in the up-left-corner of the table.
@@ -191,15 +193,14 @@ public  function  ProcessMassiveMarketing(BulkActionSettings  $bulkActionSetting
 		// ...
 }
 ```
-Normally, you would prefer handling the bulk actions in a Laravel Job but, if you need to make some processes in the main thread `BulkActionSettings` gives you some handy tools. Once execution gets to the callback you will have access to the query builder, and of course, for performance reasons, in this point, system will avoid querying the database, so is a developer's job but shall fear you are not 'cause obtaining the selected values is very easy. 
-1. Use `$bulkActionSettings->getQueryBuilder();` if you wish to obtain only the query builder **with** the registers to be processed in the where clause. That way, when you executes the query at any time, it will give you what you select.
-2. If you have a decent (lite) amount of data you can use `$bulkActionSettings->getSelectedModels()`... but keep in mind that this guy is a dragon of resources. This method will give as well all the selected data.
+Normally, you would prefer to handle bulk actions in a Laravel Job but, if you need to make some processing on the main thread `BulkActionSettings` gives you some useful tools. Once the execution reaches the callback you will have access to the query builder, and of course, for performance reasons, in this point, the system will avoid querying the database, so is a developer's job but but you should fear not because obtaining the selected values is very easy. 
+1. Use `$bulkActionSettings->getQueryBuilder();` if you wish to obtain only the query builder **with** the records to be process in the where clause. That way, when you executes the query at any time, it will give you what you select.
+2. If you have a decent (lite) amount of data you can use `$bulkActionSettings->getSelectedModels()`... but keep in mind that this guy is a dragon of resources. This method will also provide all the selected data.
 3. When you use `$bulkActionSettings->getSelectedIds();` all that you will be obtaining is the result of executing `$this->getQueryBuilder()->pluck($this->modelPrimaryKey)->toArray();`
 
-
 ## IDateRangeFilter
-This interface has the `DateFilterSettings $dateFilterSettings` property declaration. Note that the class `DateFilterSettings`'s first argument is the column that will be use as filterable date range column. The purpose is give to the users a set of common labeled dates ranges from which the user can pick one of them. As you can imagine, each common date range has its own predefined `DateTime` range. See the example below. <br>
-`Note: Labels descriptions cannot be modified by any interface at this moment`
+This interface has the property declaration `DateFilterSettings $dateFilterSettings`. Note that first argument of the class `DateFilterSettings` is the column to be used as the filterable date range column. The purpose is to gives the users a set of common labeled dates ranges from which the user can choose one of them. As you can imagine, each common date range has its own predefined `DateTime` range. See the example below. <br>
+`Note: Labels descriptions cannot be modified by any interface at this time`
 
 ```php
 // Example
@@ -210,10 +211,10 @@ $this->dateFilterSettings = new DateFilterSettings('created_at',
 );
 ```
 
-In addition you can specify the case `CommonDateFilter::CUSTOM_RANGE` to instruct the engine to allow the user enter a custom date range from the html date input. Or you can use `CommonDateFilter::ALL_RANGES` case to specify that engine must show all options included `CommonDateFilter::CUSTOM_RANGE` case.
+Additionally, you can specify the `CommonDateFilter::CUSTOM_RANGE` case to instruct the engine to allow the user to enter a custom date range from the HTML date input. Or you can use `CommonDateFilter::ALL_RANGES` case to specify that the engine must render all options included `CommonDateFilter::CUSTOM_RANGE` case.
 
 ## ISingleSelectionFilter
-This interface has the `SelectionFilterSettings $singleSelectionFilterSettings` property declaration. The html binded to this filter will force the user to choose only one possible filter value at a time. So, if you want to filter products by its status the way is:
+This interface has the property declaration `SelectionFilterSettings $singleSelectionFilterSettings`. The HTML code associated to this filter will force the user to choose only one possible filter value at a time. So, if you want to filter products by their status the way to do is:
 ```php
 // Example
 
@@ -222,11 +223,11 @@ $this->singleSelectionFilterSettings = new SelectionFilterSettings('status')
     ->add('Discontinued', 'discontinued')
     ->add('Available', 'available');
 ```
-The class `SelectionFilterSettings` receives as the first argument the column to be filtered, then, using the `builder pattern` you can concatenate the possible values to filter, by using the `add` method. The first argument of the `add` method is the label of the filter while the second is the possible value for that particular case.
+The class `SelectionFilterSettings` receives as its first argument the column to filter, then, using the `builder pattern` the possible values to filter can concatenated using the `add` method. The first argument of the `add` method is the filter label while the second is the possible value for that particular case.
 
 ## IMultiSelectionFilter
-This interfaces behaves the same as ISingleSelectionFilter but multiple values can be selected at a time. The selected values are not inclusives, so they are interpreted as `AND` in the query string. To use the interface you need to implement `SelectionFilterSettings $multiSelectionFilterSettings` property. See example below:
-```
+This interfaces behaves the same as `ISingleSelectionFilter` but multiple values can be selected at once. The selected values are not inclusive, so they are interpreted as `AND` in the query string. To use the interface you need to implement `SelectionFilterSettings $multiSelectionFilterSettings` property. See the following example:
+```php
 // Example
 
 $this->$multiSelectionFilterSettings = new SelectionFilterSettings('status')
@@ -236,9 +237,9 @@ $this->$multiSelectionFilterSettings = new SelectionFilterSettings('status')
 ```
 
 ## IRowsPerPage
-If you need to change the default behavior of the rows shown per page or explicitly set the initial value of the rows per page you should implement the `IRowsPerPage` interface. The property `$rowsPerPage` will set the initial set of rows shown and `$rowsPerPageOptions` property will overwrite the `Rows per page` options in the html output.
+If you need to change the default behavior of the rows displayed per page or explicitly set the initial value of the rows per page you should implement the `IRowsPerPage` interface. The property `$rowsPerPage` will set the initial set of rows displayed and `$rowsPerPageOptions` property will overwrite the `Rows per page` options in the html output.
 
-```
+```php
 // Example
 
 public int $rowsPerPage = 10;
@@ -246,22 +247,22 @@ public array $rowsPerPageOptions = [10,20,40,60,80];
 ```
 
 ## IPaginationRack
-To overwrite the default behavior of the pagination section of the table, you should implement the interface `IPaginationRack` as follows:
+To overwrite the default behavior of the pagination section of the table, you must implement the `IPaginationRack` interface as follows:
 
-```
+```php
 // Example
 
 public int $paginationRack = 0;
 
 public function __construct()
 {
-    // Shows the pagination on top and bottom
+    // Display the pagination on top and bottom
     PaginationRack::addFlags($this->paginationRack, PaginationRack::TOP, PaginationRack::BOTTOM);
 }
 ```
 
 ## IActionColumn
-Usually you need to use a column as a container of buttons which controls some of the actions on the row. This is a common case of `action column`. This interfaces allows you to use one column with this purpose.
+Usually, you need to use a column as a container of buttons that control some of the actions in the row. This is a common case of an `action column`. This interfaces allows you to use one column with this purpose.
 
 ```
 // Example
@@ -274,12 +275,13 @@ public function actionView(Model $item): \Illuminate\View\View
 }
 ```
 
-The `public int $actionColumnIndex` property defines the position of where the column should be rendered. If the value is set to `-1` the engine will always set the action column as the last rendered column. By implementing the `public function actionView(Model $item): \Illuminate\View\View` you are telling the engine which view use to render each set of control by each cell of the column. The argument of the `actionView` method is an instance of the model and must return a `\Illuminate\View\View` object.
+The `public int $actionColumnIndex` property defines the position at which the column should be rendered. If the value is set to `-1` the engine will always set the action column as the last column rendered. By implementing the `public function actionView(Model $item): \Illuminate\View\View` you are telling the engine which view to use to render each set of controls for each cell in the column. The argument to the `actionView` method is an instance of the model and method must return a `\Illuminate\View\View` object.
 
 [1]: https://bevacqua.github.io/dragula/
 [idragdropreordering]:#idragdropreordering---powered-by-dragula-js
+
 ## IDragDropReordering - (powered by [Dragula JS][1])
-Generic table engine helps you to order rows manually. When you implements this interface you will be able to grab any rendered row and drop it any where you need (inside the tbody). **For this case, the engine needs an ordered column from 1 to N** where **N** is the last counting row. Lets say you have 5 records in the Product's table. The table needs to have a column `order` where `order` is from 1 to 5. The engine will not set the ordering for you and you need to keep this in mind when you inert new records. The interface declares only `public string $orderingColumn` property. If you implement this interface and leave the property unset, the engine will use column `order` by default and if you dont have an existing column named `order` horrors will be seen. By default this column will force the system to use this column as a default sorted column. With the following code you will been enabling the manual ordering using drag and drop
+The generic table engine helps you to sort rows manually. When you implement this interface you will be able to grab any rendered row and drop it wherever you need (inside the tbody). **For this case, the engine needs a column sorted from 1 to N** where **N** is the last row count. Let's say you have 5 records in the Product's table. The table needs to have a `order` column where the `order` value is from 1 to 5. The engine will not set the order for you and you need to keep this in mind when you inert new records. The interface declares only `public string $orderingColumn` property. If you implement this interface and leave the property unset, the engine will use the `order` column by default and if you don't have an existing column called `order` horrors will be seen. By default this column will force the system to use this column as a default sorted column. With the following code you will enable manual ordering using drag and drop
 ```php
 // Example
 
@@ -301,23 +303,23 @@ Now, if you need to implement your own reordering method you could use the `OnRe
 public function onReorderCallback(int $newPosition, $oldPosition, Model $model)
 {
     /**
-     * If method exists, should return TRUE indicating to the subsystem that
+     * If method exists, it should return TRUE to indicate to the subsystem that
      * this method will handle the reording.
-     * If you do not explicitly return boolean, the subsystem will use FALSE as a default returned value
+     * If you do not explicitly return boolean, the subsystem will use FALSE as a default return value
      */
     
     return false;
 }
 ```
 
-If method exists, should return `TRUE` indicating to the subsystem that this method will handle the reording. If you do not explicitly return boolean, the subsystem will use FALSE as a default returned value and will handle the reording ignoring your custom handler. When you move a record from postion **X** to position **Y** the **X** position is called the ***old position*** and ***Y*** position is called the ***new position***, and as you can understand, the `$model` is the moved element.
+If the method exists, it should return `TRUE` to indicate to the subsystem that this method will handle the reording. If you do not explicitly return boolean, the subsystem will use FALSE as a default return value and will handle the reording ignoring your custom handler. When you move a record from postion **X** to position **Y** the **X** position is called the ***old position*** and ***Y*** position is called the ***new position***, and as you can understand, the `$model` is the moved element.
 
 ## IEvent
-Use it when you need to catch some of the internal events of the engine and make custom calculations or modify some thing at your convenience. The interface declares `public function dispatchCallback(EventArgs $arguments): void` method.
+Use it when you need to capture some of the internal events of the engine and perform custom calculations or modify some thing at your convenience. The interface declares the method `public function dispatchCallback(EventArgs $arguments): void`.
 
-### Moments where `dispatchCallback` is fired:
-1. When database query is about to be build. The `dispatchCallback` receives a child class of `EvntArgs` called `DatabaseEvent` that is thrown only on initial state of the query builder.
-2. When `dispatcher` is invoke from inside of `generic table`. Imagine you need to rise a callback event through the generic table for some reason, mainly to maintain organized logic, well, this is the way. You manually make a `wrie:click = "dispatcher( {object} )"` from an `action column control` for example:
+### Times where `dispatchCallback` is fired:
+1. When database query is about to be generated. The `dispatchCallback` receives a child class of `EvntArgs` called `DatabaseEvent` which is fired only in the initial state of the query builder.
+2. When `dispatcher` is invoked from within `generic table`. Imagine you need to rise a callback event through the generic table for some reason, mainly to maintain organized logic, well, this is the way. You manually make a `wrie:click = "dispatcher( {object} )"` from an `action column control` for example:
 
 
 ```html
@@ -327,18 +329,18 @@ Use it when you need to catch some of the internal events of the engine and make
 <div>
     <a href="" wire:click.prevent = "$dispatch('edit', {productId:{{ $productId }}})">Edit</a>
     
-    <!-- Here you can rise the default EventArgs on your table definition side -->
+    <!-- Here you can rise the default EventArgs in your table definition side -->
     <a href="" wire:click.prevent = "dispatcher({productId: {{ $productId }}})">Details</a>
     
     <a href="">Delete</a>
 </div>
 ```
 
-That way, you can struct your tables logic around the table class definition (as should be) and not the livewire component. Of course, some times you will need to throw an event directly to your livewire component and a `$dispatch` from livewire is ok.
+That way, you can structure your tables logic around the table class definition (as it should be) and not the livewire component. Of course, some times you will need to fire an event directly to your livewire component and a `$dispatch` from livewire is fine.
 
-Other use case for this interface is to be used as a complement of `param injection`. The `param injection` is nothing more than `generic table` listening for a particular event called `injectParams` where you can pass arbitrary data that will be exposed in any `dispatchCallback`
+Another use case for this interface is to be used as a complement of `param injection`. The `param injection` is nothing but `generic table`that listens to a particular event called `injectParams` where you can pass arbitrary data that will be exposed in any `dispatchCallback`
 
-Lets say, that you have defined a nav-tab of options in your livewire component, and each tab must filter the generic table with some arbitrary or defined value. Using this interface in combination with `param injection` you can set the initial state of the query giving the selected tab and fire `injectParams` event in every update of the livewire model containing the tab value. Lets see a quick example:
+Let's say you have defined the options for a navigation tab in your Livewire component and each tab should filter the generic table with some arbitrary or defined value. By using this interface in combination with `param injection` you can set the initial state of the query and have the selected tab fire the `injectParams` event on every update to the Livewire model. Let's look at a quick example:
 
 #### Table definition:
 ```php
@@ -380,7 +382,7 @@ class TableWithFilters implements IGenericTable, IEvent
 }
 ```
 
-As you can see in the previous table example definition the `dispatchCallback` implementation is prepare to receive `DatabaseEvent`. When that occurs, the selected tab view from the livewire component can be used to handle the behavior of the query. Now, as you can see there is no initial state for `$arguments->injectedArguments['tabView']` yet...
+As you can see from previous example the `dispatchCallback` implementation is prepare to receive `DatabaseEvent`. When that happens, the livewire component´s selected tab view can be used to controo the query behavior. But, there is no initial state for `$arguments->injectedArguments['tabView']` yet...
 
 #### Livewire Component:
 
@@ -415,11 +417,11 @@ class TableWithFiltersComponent extends Component
         $this->dispatch('injectParams', ['tabView' => $val]);
     }
 }
+
+// ... and view ...
 ```
 
 ```html
-// ... and view ...
-
 <div class="container-fluid">
     <div class="row">
         <div class="col-auto">
@@ -435,10 +437,10 @@ class TableWithFiltersComponent extends Component
 </div>
 ```
 
-The `@generic_table` directive accepts two arguments. The first is the `FQCN` of table definition while the second is an array of possible arguments. All arguments passed to the initialization of `generic table` component will be exposed as argument of the event args in the `dispatchCallback` method implementation. In the example above you can see how by initializing the `generic table` with predefined values and thanks to generic table engine that exposes those values in the `dispatchCallback` we have the hability to set an initial state in the query builder and with the help of `injectParams` event we can update the value of the array key `tabView` to "keep in track" the nav-tab filter
+The `@generic_table` directive accepts two arguments. The first one is the `FQCN` of the table definition while the second is an array of possible arguments. All the arguments passed to the `generic table` component initialization will be exposed as a part of the event args in the `dispatchCallback` method implementation. In the above example you can see how by initializing the `generic table` with predefined values and thanks to generic table engine that exposes those values in the `dispatchCallback` we have the hability to set an initial state in the query builder and with the help of `injectParams` event we can update the `tabView` array key value to "keep track" of the the nav-tab filter
 
 ## IExportable
-If you need export all the queried registers you can use `IExportable` interface which declares ` public function onExport(ExportEventArgs $args) :  BinaryFileResponse|Response` method. When you implements this interface a `bootstrap warning button with a SVG cloud` shows up in the top-right corner of the table. System does not handle the export for you, but make it much more easier. Once you have the `public function onExport(ExportEventArgs $args) : BinaryFileResponse|Response` implemented you only needs to `return $args->export();`
+If you need export all queried registers you can use `IExportable` interface which declares the `public function onExport(ExportEventArgs $args) :  BinaryFileResponse|Response` method. When you implement this interface a `bootstrap warning button with a SVG cloud` appears in the top-right corner of the table. The system does not handle the export for you, but it makes it much easier. Once you have the `public function onExport(ExportEventArgs $args) : BinaryFileResponse|Response` implemented you only needs to `return $args->export();`
 
 ```php
 // Example
@@ -450,7 +452,7 @@ public function onExport(ExportEventArgs $args) : BinaryFileResponse|Response
 }
 ```
 
-The `ExportEventArgs` have some interesting points that is worth to explain. Once the execution gets to the `onExport` method you have some options to handle. By default, the engine will set a time mark in the exported file name like this `date('YmdHis')`. So, `my_products` may ends up  in `my_products_20250310220005`, but if you don't need it you can set `appendTimeMarkToFilename` to `false` like:
+The `ExportEventArgs` have some interesting points worth explaining. Once the execution reaches the `onExport` method you have some options to handle. By default, the engine will set a timestamp on the exported file name like `date('YmdHis')`. So, `my_products` may end up  in `my_products_20250310220005`, but if you don't need that you can set `appendTimeMarkToFilename` to `false` like:
 ```php
 public function onExport(ExportEventArgs $args) : BinaryFileResponse|Response
 {
@@ -460,16 +462,16 @@ public function onExport(ExportEventArgs $args) : BinaryFileResponse|Response
 }
 ```
 
-Also, if you dont use a `filename` system will assign you the model's name in snake case verison. So, in case of model `MyProducts`, file name will be `my_products_<time_mark>.[extension]`.
+Also, if you don't use a `filename`, the system will assign the model name in the Snake Case version. So, for the `MyProducts` model, the filename will be `my_products_<timestamp>.[extension]`.
 
 ### Deadlocks
-Once the execution gets to `onExport` no query has been made in order to improve performance. If the data set obtained from the query execution is relatively short, you may have no problem with call directly the `$args->export();` method, but when 300K registers enter the scene, things turns heavy for the server and PHP kills the fun... with reason. If you take a look in the `ExportEventArgs $args` the `generic table` offers you the `Eloquent\Builder` for you to handle the results as you needs, but with all filters applied if they in deed are. With this way (custom handling) you are able to create a Laravel Job at this time, save the file and send it by email or using another channel that you have in mind... but! deadlocks can attack again and thats why I will always recommend to do exports using chunks or with limited amount of data.
+Once the execution reaches `onExport` no query has been performed to improve performance. If the dataset obtained from the query execution is relatively short, you may have no problem calling the `$args->export();` method directly, but when 300K records come into play, things get heavy for the server and PHP kills the fun... rightly so. If you take a look at the `ExportEventArgs $args` the `generic table` offers you the `Eloquent\Builder` to manage the results as you need, but with all the filters applied if there are any. This way (custom handling) you are able to create a Laravel Job at this moment, save the file and send it by email or using another channel you have in mind... but! deadlocks can strike again and that is why I will always recommend doing exports using chunks or with limited amount of data.
 
 ### The Maatwebsite\Excel package
 If you have installed the [Maatwebsite\Excel package](https://docs.laravel-excel.com/3.1/getting-started/) the `generic table` will use a predefinded template to export the data using this library, otherwise the exported file will be a `csv` file.
 
 ## ILoadingIndicator
-This interface is usefull only when you need to change the behavior of the loading indicator. When you perform some action inside the `generic table` component there is a Livewire hook waiting for the `request`. The loading indicator shows up when request start and hides when `requests` has been responded. In order to give you full control over the view you need to specify a blade view that serves as a loading indicator and engine will toggle `display: block|none` css property using the `id` attribute of the html tag that has to be called `generic_table_loader`.
+This interface is useful only when you need to change the behavior of the loading indicator. When you perform some action inside the `generic table` component there is a Livewire hook waiting for the `request`. The loading indicator appears when the request is initiated and is hidden when the `requests` have been answered. To give you full control over the view you need to specify a blade view to serve as the loading indicator and the engine will toggle the CSS property `display: block|none` using the `id` attribute of the html tag which should be called `generic_table_loader`.
 See the example:
 
 ```php
@@ -493,15 +495,15 @@ public function tableLoadingIndicatorView(): \Illuminate\View\View
 </div>
 ```
 
-# Attributes
-The package have some useful attributes that worths to mention:
+## Attributes
+The package have some useful attributes that worths mentioning:
 
 1. [CellFormatter](#cellformatter)
 2. [OnReorder](#onreorder)
 
 
 ## CellFormatter
-When a cell is about to be rendered, the engine will call the method targeted by the attribute to aply a format to the cell. The attribute expects the `database column name` to match the `formatter` with the desire column. The only argument passed to the callback is an instance of the model in representation of the entire row. The output will always be treated as HTML string, so **be aware of the security concerns**.
+When a cell is about to be rendered, the engine will call the method targeted by the attribute, to aply a format to the cell. The attribute expects the `database column name`. The only argument passed to the callback is an instance of the model in representing the entire row. The output will always be treated as HTML string, so **be aware of the security concerns**.
 
 ```php
 #[CellFormatter('id')]
@@ -512,19 +514,19 @@ public function idFormatter(Model $modelItem)
 ```
 
 ## OnReorder
-This attribute will help you to make a custom handler for the `IDragDropReordering` interface implementation. See [How to Implement IDragDropReordering](#idragdropreordering )
+This attribute will help you to make a custom handler for the `IDragDropReordering` interface implementation. See [How to Implement IDragDropReordering interface](#idragdropreordering )
 
-# Traits
+## Traits
 1. [WithGenericTable](#withgenerictable)
     - [refreshGenericTable](#withgenerictablerefreshgenerictable)
     - [injectParams](#withgenerictableinjectparamsarray-params)
  
 
-## WithGenericTable
-Was designed to be a sort of helper for the `Generic Table Definition`.
+### WithGenericTable
+It was designed to be a sort of helper for the `Generic Table Definition`.
 
-### WithGenericTable::refreshGenericTable()
-Dispatch an event called `refreshGenericTable` to force the reload of the component
+#### WithGenericTable::refreshGenericTable()
+Dispatch an event called `refreshGenericTable` to force the the component reload
 
-### WithGenericTable::injectParams(array $params)
-Dispatch an event called `injectParams` to "inject" arbitrary data in the `generic table` component. See [How to implement IEvent][idragdropreordering]
+#### WithGenericTable::injectParams(array $params)
+Dispatch an event called `injectParams` to "inject" arbitrary data into the `generic table` component. See [How to implement IEvent][idragdropreordering]
