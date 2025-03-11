@@ -16,8 +16,6 @@ enum ColumnSettingFlags : int
     case DEFAULT_SORT       = 1<< 6;
     case DEFAULT_SORT_ASC   = 1<< 7;
     case DEFAULT_SORT_DESC  = 1<< 8;
-    case ALL                = 1<< 9;
-    case NONE               = 0;
 
     public static function sanitizeSortFlags(int $flags): int
     {

@@ -7,7 +7,7 @@ use Str;
 
 class BulkAction
 {
-    public private(set) bool $requireConfirmation = false;
+    public private(set) bool $requireConfirmation = true;
 
     public function __construct(public string $actionName, public Closure $callback) { }
 
@@ -16,8 +16,8 @@ class BulkAction
         return new static($actionName, $callback);
     }
 
-    public function isConfirmRequired()
+    public function ignoreUserConfirm()
     {
-        $this->requireConfirmation = true;
+        $this->requireConfirmation = false;
     }
 }

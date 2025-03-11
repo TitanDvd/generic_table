@@ -63,7 +63,7 @@ final class Column implements IColumn
         return $this;
     }
 
-    public function withFilters()
+    private function withFilters()
     {
 
         return $this;

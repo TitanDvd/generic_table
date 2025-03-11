@@ -23,7 +23,7 @@ use Mmt\GenericTable\Components\TableFilterItem;
 use Mmt\GenericTable\Enums\ColumnSettingFlags;
 use Mmt\GenericTable\Enums\FilterType;
 use Mmt\GenericTable\Enums\PaginationRack;
-use Mmt\GenericTable\Interfaces\{IActionColumn, IDragDropReordering, IEvent, IExportable,IGenericTable,IPaginationRack, IRowsPerPage, IBulkAction };
+use Mmt\GenericTable\Interfaces\{IActionColumn, IDragDropReordering, IEvent, IExportable,IGenericTable,IPaginationRack, IRowsPerPage, IBulkAction, ILoadingIndicator };
 use Mmt\GenericTable\Support\DatabaseEvent;
 use Mmt\GenericTable\Support\EventArgs;
 use Mmt\GenericTable\Support\ExportEventArgs;
@@ -64,7 +64,8 @@ class Table extends LivewireComponent
     public array $indexedRelationships = [];
     public bool $isActionColumnActive = false;
     public array $injectedArguments = [];
-    public $listeners = ['refresh_generic_table' => '$refresh'];
+    public $listeners = ['refresh_generic_table' => '$refresh', 'refreshGenericTable' => '$refresh'];
+    public bool $useCustomLoadingIndicator = false;
 
     
     final protected int $paginationRack = 0;
@@ -103,7 +104,7 @@ class Table extends LivewireComponent
     }
 
     
-    private IGenericTable|IActionColumn|IExportable|IBulkAction $tableObject
+    private IGenericTable|IActionColumn|IExportable|IBulkAction|ILoadingIndicator $tableObject
     {
         get {
             if(!isset($this->tableObject)) {
@@ -213,6 +214,10 @@ class Table extends LivewireComponent
 
             if($this->tableObject instanceof IExportable) {
                 $this->useExport = true;
+            }
+
+            if($this->tableObject instanceof ILoadingIndicator) {
+                $this->useCustomLoadingIndicator = true;
             }
 
             $this->hasBulkActions = $this->tableObject instanceof IBulkAction;
@@ -841,5 +846,14 @@ class Table extends LivewireComponent
         else {
             $this->injectedArguments = $params;
         }
+    }
+
+
+    public function tableLoader()
+    {
+        if($this->useCustomLoadingIndicator) {
+            return $this->tableObject->tableLoadingIndicatorView();
+        }
+        return view('generic_table::table_loader');
     }
 }

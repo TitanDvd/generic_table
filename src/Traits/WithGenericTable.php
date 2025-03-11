@@ -6,6 +6,11 @@ trait WithGenericTable
 {
     public function refreshGenericTable()
     {
-        $this->dispatch('refresh_generic_table');
+        $this->dispatch('refreshGenericTable');
+    }
+
+    private function injectParams(array $params)
+    {
+        $this->dispatch('injectParams', $params);
     }
 }
