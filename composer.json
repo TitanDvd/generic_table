@@ -16,8 +16,8 @@
     ],
     "require": {
         "php": ">=8.4",
-        "illuminate/support": "^11.0",
-        "livewire/livewire": "^3.5"
+        "illuminate/support": ">=11.0",
+        "livewire/livewire": ">=3.5"
     },
     "extra":{
         "laravel":{
@@ -25,5 +25,7 @@
                 "Mmt\\GenericTable\\ServiceProvider"
             ]
         }
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }
