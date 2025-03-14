@@ -264,7 +264,7 @@ public function __construct()
 ## IActionColumn
 Usually, you need to use a column as a container of buttons that control some of the actions in the row. This is a common case of an `action column`. This interfaces allows you to use one column with this purpose.
 
-```
+```php
 // Example
 
 public int $actionColumnIndex = -1;
