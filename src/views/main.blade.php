@@ -121,7 +121,7 @@
 
                 <div class="col-12 col-lg-3">
                     
-                    <div class="row g-{{ $useExport == true ? '2' : '0' }}">
+                    <div class="row g-{{ $useExport == true ? '2' : '0' }} justify-content-end">
 
                         @if( count(($searchableColumns = $this->resolveSearchColumns())) > 0)
                             <div class="col-{{ $useExport == true ? '10' : '' }}">
@@ -257,6 +257,9 @@
         @endphp
 
         <div class="col-12 px-0 overflow-auto mb-3 position-relative">
+            {{-- Shows the loading indicator when a request is sent to the server --}}
+            {{ $this->tableLoader() }}
+
             @if($this->tableItems->count() == 0)
                 <div class="mx-3">
                     <div class="alert alert-warning text-center m-0 p-3">
@@ -265,9 +268,6 @@
                 </div>
             @else
                 
-                {{-- Shows the loading indicator when a request is sent to the server --}}
-                {{ $this->tableLoader() }}
-
                 <table class="table m-0" id ="generic_table">
                     <thead>
 
