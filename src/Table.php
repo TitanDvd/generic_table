@@ -896,10 +896,18 @@ class Table extends LivewireComponent
     }
 
 
-    public function cellHtmlOutput($column, Model $rowModel)
+    public function cellHtmlOutput(IColumn $column, Model $rowModel)
     {
-        if($column instanceof IColumnRenderer) {
+        $formatter = null;
+        if(isset($this->formatters[$column->databaseColumnName])) {
+            $formatter = $this->formatters[$column->databaseColumnName];
+        }
+        
+        if($column instanceof IColumnRenderer && $formatter == null) {
             return $column->renderCell($rowModel);
+        }
+        else if(isset($formatter)) {
+            return $this->tableObject->{$formatter}( $rowModel );
         }
         else {
             return Column::cellValue($column, $rowModel);
