@@ -1,3 +1,4 @@
+
 # Generic Table: Laravel+Livewire package to automatize HTML tables
 
 ## Introduction
@@ -15,13 +16,13 @@ Generic Table is a package that makes working with tables in Laravel + Livewire 
 
 ## Features
 - Drag and drop rows to simplify reordering. (using [Dragula Js][1])
-- Classic column reordering.
+- Classic column sorting.
 - Bind the entire column to a laravel route.
 - Create action columns. Customize them using blade views
 - Filter by mutually exclusive or inclusives values.
 - Search by any column
 - Use relationships on columns to link the column with a relationship value.
-- and more...
+- And more...
 
 ## Basic Usage
 ### First, the `Generic Table Definition`
@@ -91,6 +92,9 @@ break down of all interfaces that exists at the moment.
 - [IEvent](#ievent)
 - [IExportable](#iexportable)
 - [ILoadingIndicator](#iloadingindicator)
+- [IColumn and IColumnRenderer](#icolumn-and-icolumnrenderer)
+	- [IColumn](#icolumn)
+	- [IColumnRenderer](#icolumnrenderer)
 
 ## IGenericTable
 This is the main interface. Every class table you want to define must implement the
@@ -160,6 +164,17 @@ $this->columns = ColumnCollection::make(
 	new  Column('SubDepartment', 'subDepartment.name'),
 );
 ```
+----
+```
+Important!:
+
+The column collection is a representation of a SQL selection. 
+That is, if you only have 3 columns in your collection, 
+that's all the selection Eloquent will perform. Engine will automatically adds
+foreign keys but they won't be part of the model passed in callbacks or implemented 
+interface methods.
+```
+----
 
 ## IBulkAction
 
@@ -190,7 +205,7 @@ $this->bulkActionCollection = BulkActionCollection::make(
 
 public  function  ProcessMassiveMarketing(BulkActionSettings  $bulkActionSettings)
 {
-		// ...
+	// ...
 }
 ```
 Normally, you would prefer to handle bulk actions in a Laravel Job but, if you need to make some processing on the main thread `BulkActionSettings` gives you some useful tools. Once the execution reaches the callback you will have access to the query builder, and of course, for performance reasons, in this point, the system will avoid querying the database, so is a developer's job but but you should fear not because obtaining the selected values is very easy. 
@@ -530,3 +545,100 @@ Dispatch an event called `refreshGenericTable` to force the the component reload
 
 #### WithGenericTable::injectParams(array $params)
 Dispatch an event called `injectParams` to "inject" arbitrary data into the `generic table` component. See [How to implement IEvent][idragdropreordering]
+
+## IColumn and IColumnRenderer
+
+### IColumn
+The `IColumn` interface is useful when you need to create a custom column. Let's say you want to create your own custom column called IconColumn where depending on any value of the row, the cell of the column will display a icon or another. To achieve that, you need to understand this interface. `IColumn` declares as follows:
+
+```php
+interface  IColumn
+{
+	public  string  $columnTitle {get; set;}
+	public ?string  $databaseColumnName {get; set;}
+	public  int  $settings {get; set;}
+	public ?MappedRoute  $mappedRoute {get; set;}
+}
+```
+1. `public  string  $columnTitle` is the string used by the engine to render the HTML column header output.
+2. `public ?string  $databaseColumnName {get; set;}` is the string used to find the database column. As you can see, it can be `null`, as it allows to locate the database column name by other means if this field is `null`. By default the class `Column` implements a use-case behavior when this property is `null` taking `columnTitle` and applying `Str::snake()` to it. This way if users leaves the `databaseColumnName` as null, system will take `columnTitle` in snake case as Laravel does. If you want to implement your own column you will need to implement a similar behavior. It is not a mandatory rule but your column's users will appreciate it.
+3. `public  int  $settings {get; set;}` Applys settings flags to the column. Use the `ColumnSettingFlags` enum to do it.
+4. `public ?MappedRoute  $mappedRoute {get; set;}` use it only when your column needs to handle links, if not, leave it as `null`
+
+That is all you need to implement, to create your own column definition.  
+
+### IColumnRenderer
+Now, the `Column` class implements another interface called `IColumnRenderer` that allows you to define your own rules for the cell rendering. The system has its own, but you can overwrite the method and create your own, its very easy...
+
+```php
+interface  IColumnRenderer
+{
+	public  function  renderCell(Model  $rowModel) : string;
+}
+```
+
+All you need is implements the above method. Once the system reaches the moment to render your column, it will call your method definition instead of the internal one. Keep in mind that the output will always be rendered as HTML so be aware of the **security concerns**.
+
+An example of how to implement your own column definition
+```php
+<?php
+namespace  App\Tables\Extensions;
+
+use  Closure;
+use Mmt\GenericTable\Attributes\MappedRoute;
+use Mmt\GenericTable\Interfaces\IColumn;
+use Mmt\GenericTable\Interfaces\IColumnRenderer;
+use  Str;
+
+class  IconColumn  implements  IColumn, IColumnRenderer
+{
+	public  int  $settings = 0;
+	public ?MappedRoute  $mappedRoute = null;
+	public ?string  $databaseColumnName = 'status';
+	public  string  $columnTitle = 'Status';
+	private  Closure  $setIconCallback;
+	
+	public  function  __construct()
+	{
+		if($this->databaseColumnName == null)
+			$this->databaseColumnName = Str::snake($this->columnTitle);
+	}
+	
+	public  function  renderCell(\Illuminate\Database\Eloquent\Model  $rowModel): string
+	{
+		$icon = 'bi bi-arrow-up-right-circle-fill';
+		
+		if(isset($this->setIconCallback))
+			$icon = $this->setIconCallback->call($this, $rowModel);
+	
+		return  <<<HTML
+					<div  class = "w-100 d-flex justify-content-start">
+					<i  class = "$icon me-2"></i>
+					</div>
+				HTML;
+	}
+	
+	public  function  route(MappedRoute  $route)
+	{
+		$this->mappedRoute = $route;
+		return  $this;
+	}
+	
+	public  function  setIconIf(Closure  $callback)
+	{
+		$this->setIconCallback = $callback;
+		return  $this;
+	}
+}
+```
+A possible use may be:
+```php
+$this->columns->add(new  IconColumn()->setIconIf(function(Model  $rowModel) use($icons) {
+	if($rowModel->status == 'discontinued') {
+		return  $icons['bag-check'] .  ' text-success';
+	}
+	else {
+		return  $icons['bag-x'] .  ' text-danger';
+	}
+}));
+```
