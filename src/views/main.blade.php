@@ -253,7 +253,7 @@
 
         @php
             $columnActionIndex = $this->actionIndex();
-            $isAllowSorting = fn($column, $isReordering) => $column->isSorteable() == true && $isReordering == false; 
+            $isAllowSorting = fn($column, $isReordering) => $this->columnIsSorteable($column) == true && $isReordering == false; 
         @endphp
 
         <div class="col-12 px-0 overflow-auto mb-3 position-relative">
@@ -283,7 +283,7 @@
 
                         @foreach ($this->tableObject->columns as $index => $column)
 
-                            @continue($column->isHidden())
+                            @continue($this->columnIsHidden($column))
 
                             @if($columnActionIndex == $index && $isActionColumnActive == true)
                                 <th>Action</th>
@@ -351,36 +351,14 @@
                                 
                                 @foreach ($this->tableObject->columns as $idx => $column)
 
-                                    @continue($column->isHidden())
+                                    @continue($this->columnIsHidden($column))
                                     
                                     @if($columnActionIndex == $idx && $isActionColumnActive == true)
                                         <td>{{ $this->actionView($modelItem) }}</td>
                                     @endif
                                     
                                     <td class="text-truncate">
-                                        @if(isset($this->formatters[$column->databaseColumnName]))
-                                            {!! $this->binder($this->formatters[$column->databaseColumnName], $modelItem) !!}
-                                        @else
-                                            @if($column->bindedRoute != '')
-                                                <a href="{{ route($column->bindedRoute, $column->resolveBindedParams($modelItem) ) }}" target="{{ $column->target->value }}">
-                                                    @if($column->linkLabel == '')
-                                                        @if(count($this->indexedRelationships) > 0 && isset($this->indexedRelationships[$idx]))
-                                                            {{ $this->getNestedRelationValue($modelItem, $this->indexedRelationships[$idx]['relationship']) }}
-                                                        @else
-                                                            {{ $modelItem->{$column->databaseColumnName} ?? '--' }}
-                                                        @endif
-                                                    @else
-                                                        {{ $column->linkLabel }}
-                                                    @endif
-                                                </a>
-                                            @else
-                                                @if(count($this->indexedRelationships) > 0 && isset($this->indexedRelationships[$idx]))
-                                                    {{ $this->getNestedRelationValue($modelItem, $this->indexedRelationships[$idx]['relationship']) }}
-                                                @else
-                                                    {{ $modelItem->{$column->databaseColumnName} ?? '--' }}
-                                                @endif
-                                            @endif
-                                        @endif
+                                        {!! $this->cellHtmlOutput($column, $modelItem) !!}
                                     </td>
 
                                     @if( $columnActionIndex-1 >= $idx && $idx == $this->columns->count-1 && $isActionColumnActive == true)

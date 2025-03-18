@@ -8,6 +8,7 @@ use DB;
 use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\On;
@@ -24,6 +25,8 @@ use Mmt\GenericTable\Enums\ColumnSettingFlags;
 use Mmt\GenericTable\Enums\FilterType;
 use Mmt\GenericTable\Enums\PaginationRack;
 use Mmt\GenericTable\Interfaces\{IActionColumn, IDragDropReordering, IEvent, IExportable,IGenericTable,IPaginationRack, IRowsPerPage, IBulkAction, ILoadingIndicator };
+use Mmt\GenericTable\Interfaces\IColumn;
+use Mmt\GenericTable\Interfaces\IColumnRenderer;
 use Mmt\GenericTable\Support\DatabaseEvent;
 use Mmt\GenericTable\Support\EventArgs;
 use Mmt\GenericTable\Support\ExportEventArgs;
@@ -61,7 +64,6 @@ class Table extends LivewireComponent
     public bool $componentInitialized = false;
     public string $pageName;
     public bool $useExport = false;
-    public array $indexedRelationships = [];
     public bool $isActionColumnActive = false;
     public array $injectedArguments = [];
     public $listeners = ['refresh_generic_table' => '$refresh', 'refreshGenericTable' => '$refresh'];
@@ -253,19 +255,15 @@ class Table extends LivewireComponent
     private function execQuery(bool $paginate = true, bool $returnQueryBuilder = false): \Illuminate\Database\Eloquent\Builder|Builder|Collection|LengthAwarePaginator
     {
         $columnSelection = $this->makeSqlSelectionFromColumns();
+
+        $relationships = $this->columnsRelationships();
+
         $modelTableName = $this->model->getTable();
-
-        // Get the "with" relationship cases
-        $relationships = $this->resolveRelationshipsFromColumnSelection($columnSelection);
-
-        $this->indexedRelationships = $this->indexRelationships($columnSelection);
         
-        $foreignColumnsSelection = $this->relationshipForeignKeysSelection();
+        $query = DB::query()->from($modelTableName)->select(...$columnSelection);
         
-        $query = DB::query()->from($modelTableName)->select(...$columnSelection, ...$foreignColumnsSelection);
-
         if(count($relationships) > 0) {
-            $query = $this->model->with(...$relationships)->setQuery($query);
+            $query = $this->model->with($relationships)->setQuery($query);
         }
         else {
             $query = $this->model->setQuery($query);
@@ -309,10 +307,16 @@ class Table extends LivewireComponent
             $this->sort = 1;
         }
         
-        if($this->sortedColumn != '')
-            $query->orderBy($this->sortedColumn, $this->sort == 1 ? 'ASC' : 'DESC');
-
-        
+        if($this->sortedColumn != '') {
+            if(Column::columnIsRelationship($this->sortedColumn)) {
+                // Sadly we need to force a JOIN due to how Eloquent handles
+                // relationships 
+                $this->relationshipSort($query, $this->sortedColumn);
+            }
+            else {
+                $query->orderBy($this->sortedColumn, $this->sort == 1 ? 'ASC' : 'DESC');
+            }
+        }
 
         $this->applySingleSelectionFilterToQuery($query);
         
@@ -351,6 +355,51 @@ class Table extends LivewireComponent
         }
         return $newRelations;
     }
+
+
+    public function relationshipSort(&$query, string $column)
+    {
+        [$relationshipPath, $column] = Column::getRelationshipPathAndColumn($column);
+
+        $relationshipSlots = explode('.', $relationshipPath);
+        $lastRelationTable = '';
+        $relationsCount = count($relationshipSlots);
+        
+        $relationModel = $this->model;
+
+        foreach ($relationshipSlots as $idx => $relation) {
+            
+            /**
+             * @var BelongsTo
+             */
+            $related = $relationModel->{$relation}();
+            $foreignOrJoinKey = '';
+            
+            
+            
+            if($related instanceof BelongsTo) {
+                
+                $foreignOrJoinKey = $related->getForeignKeyName();
+                $relationModelId = $relationModel->getKeyName();
+                
+                $table = $related->getRelated()->getTable();
+                
+                $query->join($table, "{$relationModel->getTable()}.$foreignOrJoinKey", "{$table}.$relationModelId");
+                
+                $relationModel = $related->getRelated();
+            }
+            else {
+
+            }
+
+            if($idx == $relationsCount -1) {
+                $lastRelationTable = $table;
+            }
+            
+        }
+        
+        $query->orderBy("$lastRelationTable.$column", $this->sort == 1 ? 'ASC' : 'DESC');
+    }
     
 
     private function rebuildDbRelationRecursive(array $column, string &$prevCol = '')
@@ -365,80 +414,53 @@ class Table extends LivewireComponent
             }
         }
     }
+    
 
-
-    protected function getNestedRelationValue($model, $relationPath)
+    public function columnsRelationships()
     {
-        $relations = explode('.', $relationPath);
-        foreach ($relations as $relation) {
-            if (!$model) {
-                return null;
+        $relationships = [];
+        foreach ($this->tableObject->columns as $column) {
+            if(Column::columnIsRelationship($column)) {
+                $relationships[] = Column::getRelationshipPath($column);
             }
-            $model = $model->$relation;
         }
-        return $model;
+        return $relationships;
     }
-
-
+    
     /**
-     * 
-     * Index relationships in a separate array to be used
-     * in render. Also, modifies removes the relationship from
-     * the column selection
+     * Creates a selection for the Laravel Builder select method
+     * If column has relationships we would need the foreign key
+     * to be part of this selection
      * 
      */
-    private function indexRelationships(array &$columnSelection) : array
-    {
-        $indexedRelationships = [];
-        foreach($columnSelection as $idx => &$column) {
-            if(Str::contains($column,'.')) {
-                $indexedRelationships[$idx] = [
-                    'index' => $idx,
-                    'relationship' => $column,
-                ];
-
-                unset($columnSelection[$idx]);
-            }
-        }
-
-        return $indexedRelationships;
-    }
-
-    private function relationshipForeignKeysSelection()
-    {
-        if(count($this->indexedRelationships ) > 0) {
-            $rawSelection = [];
-            foreach($this->indexedRelationships as $relationship) {
-                $firstLevelRelationShip = explode('.', $relationship['relationship'])[0];
-                $rawSelection[] = $this->model->{$firstLevelRelationShip}()->getForeignKeyName();
-            }
-            return $rawSelection;
-        }
-
-        return [];
-    }
-
-
-    private function resolveRelationshipsFromColumnSelection(array $columnSelection)
-    {
-        $reltionships = [];
-        foreach($columnSelection as $column) {
-            if(Str::contains($column, '.')) {
-                $relation = substr($column, 0, strrpos($column, '.'));
-                if(array_find($reltionships, fn($e) => $e == $column) == null) {
-                    $reltionships[] = $relation;
-                }
-            }
-        }
-        return $reltionships;
-    }
-
-    
     private function makeSqlSelectionFromColumns() : array
     {
         if($this->useModelAttributesAsColumns == false)
         {
-            return array_map(fn(Column $e) => $e->databaseColumnName, iterator_to_array($this->tableObject->columns));
+            $selection = [];
+            $table = $this->model->getTable();
+
+            foreach ($this->tableObject->columns as $column) {
+                if(Column::columnIsRelationship($column)) {
+                    $foreignKey = Column::relationshipForeignKey( $column, $this->model );
+
+                    /**
+                     * 
+                     * Sometimes, when you have two or more columns with similar relationship paths
+                     * the foreign key may be repeated. For example a column with product.subdepartment.department
+                     * and product.subdepartment.name may have the same foreign key subdepartment_id in products table
+                     * 
+                     */
+                    if(isset($foreignKey) && array_find($selection, fn($e) => $e == $foreignKey) == null) {
+                        $selection[] = "$table.$foreignKey";
+                    }
+                }
+                else {
+                    $selection[] = "$table.$column->databaseColumnName";
+                }
+            }
+            
+            return $selection;
         }
 
         return ['*'];
@@ -536,7 +558,7 @@ class Table extends LivewireComponent
     {
         return array_filter(
             iterator_to_array($this->tableObject->columns), 
-            fn(Column $column) => ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::SEARCHABLE)
+            fn(IColumn $column) => ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::SEARCHABLE)
         );
     }
     
@@ -778,7 +800,7 @@ class Table extends LivewireComponent
             // If column is visible ...
             if(ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::HIDDEN) == false) {
                 // ... automatically add sorteable settings
-                ColumnSettingFlags::addFlag($column->settings, ColumnSettingFlags::SORTEABLE);
+                ColumnSettingFlags::addFlag($column->settings, ColumnSettingFlags::SORTABLE);
             }
             
             // Leave only the latest set of DEFAULT_SORT_xxx
@@ -855,5 +877,32 @@ class Table extends LivewireComponent
             return $this->tableObject->tableLoadingIndicatorView();
         }
         return view('generic_table::table_loader');
+    }
+
+    public function columnIsHidden(IColumn $column)
+    {
+        return ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::HIDDEN);
+    }
+
+    public function columnIsSorteable(IColumn $column)
+    {
+        return ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::SORTABLE);
+    }
+    
+
+    public function findColumnByDatabaseColumnName(string $databseColumnName) : IColumn
+    {
+        return array_find(iterator_to_array($this->tableObject->columns), fn(IColumn $column) => $column->databaseColumnName  ==  $databseColumnName);
+    }
+
+
+    public function cellHtmlOutput($column, Model $rowModel)
+    {
+        if($column instanceof IColumnRenderer) {
+            return $column->renderCell($rowModel);
+        }
+        else {
+            return Column::cellValue($column, $rowModel);
+        }
     }
 }

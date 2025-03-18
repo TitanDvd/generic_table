@@ -2,27 +2,25 @@
 
 namespace Mmt\GenericTable\Components;
 
+use Closure;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Mmt\GenericTable\Attributes\MappedRoute;
 use Mmt\GenericTable\Enums\ColumnSettingFlags;
-use Mmt\GenericTable\Enums\HrefTarget;
 use Mmt\GenericTable\Interfaces\IColumn;
+use Mmt\GenericTable\Interfaces\IColumnRenderer;
 use Schema;
 use Str;
 
-final class Column implements IColumn
+final class Column implements IColumn, IColumnRenderer
 {
     public int $settings = 0;
 
     public array $filters = [];
 
-    public string $bindedRoute = "";
+    public ?MappedRoute $mappedRoute = null;
 
-    public array $routeParams = [];
-
-    public string $linkLabel = "";
-
-    public HrefTarget $target;
+    private ?Closure $formatterCallback;
     
 
     public function __construct(public string $columnTitle, public ?string $databaseColumnName = null)
@@ -31,7 +29,9 @@ final class Column implements IColumn
             $this->databaseColumnName = Str::snake($columnTitle);
         }
 
-        $this->defaultColumnSettings();
+        ColumnSettingFlags::addFlags($this->settings,
+            ColumnSettingFlags::SORTABLE
+        );
     }
 
     public function withSettings(ColumnSettingFlags ...$moreSettings)
@@ -55,11 +55,7 @@ final class Column implements IColumn
 
     public function bindToRoute(MappedRoute $route)
     {
-        $this->bindedRoute = $route->route;
-        $this->routeParams = $route->routeParams;
-        $this->target = $route->target;
-        $this->linkLabel = $route->label;
-
+        $this->mappedRoute = $route;
         return $this;
     }
 
@@ -73,7 +69,7 @@ final class Column implements IColumn
     {
         ColumnSettingFlags::addFlags($this->settings,
             ColumnSettingFlags::SEARCHABLE,
-            ColumnSettingFlags::SORTEABLE,
+            ColumnSettingFlags::SORTABLE,
             ColumnSettingFlags::TOGGLE_VISIBILITY
         );
     }
@@ -93,10 +89,10 @@ final class Column implements IColumn
 
             $columnsCollection->add(
                 new self(Str::headline($sqlColumn), $sqlColumn)
-                ->withSettings(ColumnSettingFlags::SORTEABLE)
+                ->withSettings(ColumnSettingFlags::SORTABLE)
                 ->withSettingsIf(
                     $index == 0,  
-                    ColumnSettingFlags::SORTEABLE,
+                    ColumnSettingFlags::SORTABLE,
                     ColumnSettingFlags::DEFAULT_SORT
                 )
             );
@@ -109,30 +105,26 @@ final class Column implements IColumn
         return $columnsCollection;
     }
 
-    public function resolveBindedParams(Model $model) : array
+    public static function resolveColumnBinders(IColumn $column, Model $rowModel)
     {
-        if(count( $this->routeParams ) > 0)
-        {
-            $newParams = [];
-            foreach ($this->routeParams as $index => $param) {
-                if(Str::startsWith($param, [':'])) {
-                    $bindedColumn = Str::substr($param,1);
-                    $newParams[$index] = $model->{$bindedColumn};
-                }
-                else {
-                    $newParams[$index] = $param;
-                }
+        $newParams = [];
+
+        foreach ($column->mappedRoute->routeParams as $index => $param) {
+            if(Str::startsWith($param, [':'])) {
+                $bindedColumn = Str::substr($param, 1);
+                $newParams[$index] = $rowModel->{$bindedColumn};
             }
-            
-            return $newParams;
+            else {
+                $newParams[$index] = $param;
+            }
         }
 
-        return [];
+        return $newParams;
     }
 
     public function isSorteable()
     {
-        return ColumnSettingFlags::hasFlag($this->settings, ColumnSettingFlags::SORTEABLE);
+        return ColumnSettingFlags::hasFlag($this->settings, ColumnSettingFlags::SORTABLE);
     }
 
     /**
@@ -150,10 +142,135 @@ final class Column implements IColumn
         ColumnSettingFlags::hasFlag($this->settings, ColumnSettingFlags::DEFAULT_SORT_ASC) ||
         ColumnSettingFlags::hasFlag($this->settings, ColumnSettingFlags::DEFAULT_SORT_DESC);
     }
+
+    public function renderCell(Model $rowModel): string
+    {
+        $renderedValue = self::cellValue($this, $rowModel);
+        if( isset($this->formatterCallback) ) {
+            return $this->formatterCallback->call($this, $renderedValue);
+        }
+        return $renderedValue;
+    }
+
+    public static function cellValue( IColumn $column, Model $rowModel )
+    {
+        if( isset($column->mappedRoute) ) {
+            
+            $route = self::createUrlFromMappedRoute($column, $rowModel);
+
+            $linkLabel = $column->mappedRoute->label;
+
+            if( $linkLabel == '' ) {
+                if(self::columnIsRelationship($column->databaseColumnName)) {
+                    $linkLabel = self::getNestedRelationValue($rowModel, $column->databaseColumnName) ?? '';
+                }
+                else {
+                    $linkLabel = $rowModel->{$column->databaseColumnName} ?? '';
+                }
+            }
+
+            return <<<HTML
+                <a href = "$route">$linkLabel</a>
+            HTML;
+        }
+        else if( self::columnIsRelationship($column->databaseColumnName) ) {
+            return self::getNestedRelationValue($rowModel, $column->databaseColumnName) ?? '';
+        }
+        else {
+            return $rowModel->{$column->databaseColumnName} ?? '';
+        }
+    }
+
+    public function hookFormatter(Closure $callback)
+    {
+        $this->formatterCallback = $callback;
+    }
+
+    public static function createUrlFromMappedRoute(IColumn $column, Model $rowModel)
+    {
+        if( count($column->mappedRoute->routeParams) > 0) {
+            $routeParams = Column::resolveColumnBinders($column, $rowModel);
+            return route($column->mappedRoute->route, $routeParams);
+        }
+        return '##';
+    }
+
+
+    public static function getNestedRelationValue(Model $model, string $relationPath)
+    {
+        $relations = explode('.', $relationPath);
+        foreach ($relations as $relation) {
+            if (!$model) {
+                return null;
+            }
+            $model = $model->$relation;
+        }
+        return $model;
+    }
+
+    public static function columnIsRelationship( IColumn|string $column )
+    {
+        if($column instanceof IColumn) {
+            return Str::contains($column->databaseColumnName, '.');
+        }
+        return Str::contains($column, '.');
+    }
+
+    public static function columnIsNotRelationship(  IColumn|string $column )
+    {
+        return !self::columnIsRelationship($column);
+    }
     
 
-    public function isHidden()
+    /**
+     * 
+     * Returns the foreign key of a relationship
+     * 
+     */
+    public static function relationshipForeignKey( IColumn|string $column, Model $model ) : string|null
     {
-        return ColumnSettingFlags::hasFlag($this->settings, ColumnSettingFlags::HIDDEN);
+        $selection        = self::getRelationshipPath($column);
+        $relationshipName = explode('.', $selection)[0];
+        $relationInstance = $model->{$relationshipName}();
+
+        if($relationInstance instanceof BelongsTo) {
+            return $model->{$relationshipName}()->getForeignKeyName();
+        }
+        return null;
+    }
+    
+    
+    /**
+     * 
+     * Obtains the path given a full path relationship
+     * For example you.are.intelligent returns you.are
+     * 
+     */
+    public static function getRelationshipPath( IColumn|string $column ) : string
+    {
+        if($column instanceof IColumn) {
+            $lastDotPosition = strrpos($column->databaseColumnName, '.');
+            return substr($column->databaseColumnName, 0, $lastDotPosition);
+        }
+        else {
+            $lastDotPosition = strrpos($column, '.');
+            return substr($column, 0, $lastDotPosition);
+        }
+    }
+    
+    public static function getRelationshipPathAndColumn( IColumn|string $column ) : array
+    {
+        if($column instanceof IColumn) {
+            $lastDotPosition = strrpos($column->databaseColumnName, '.');
+            $relationship = substr($column->databaseColumnName, 0, $lastDotPosition);
+            $column = substr($column->databaseColumnName,  $lastDotPosition +1, strlen($column->databaseColumnName));
+            return [$relationship, $column];
+        }
+        else {
+            $lastDotPosition = strrpos($column, '.');
+            $relationship = substr($column, 0, $lastDotPosition);
+            $column = substr($column,  $lastDotPosition +1, strlen($column));
+            return [$relationship, $column];
+        }
     }
 }

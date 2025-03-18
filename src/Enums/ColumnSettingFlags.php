@@ -8,7 +8,7 @@ enum ColumnSettingFlags : int
 {
     use AsFlag;
     
-    case SORTEABLE          = 1<< 1;
+    case SORTABLE           = 1<< 1;
     case EXPORTABLE         = 1<< 2;
     case SEARCHABLE         = 1<< 3;
     case HIDDEN             = 1<< 4;

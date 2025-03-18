@@ -5,6 +5,7 @@ namespace Mmt\GenericTable\Components;
 use ArrayIterator;
 use Iterator;
 use IteratorAggregate;
+use Mmt\GenericTable\Interfaces\IColumn;
 use Traversable;
 
 /**
@@ -21,7 +22,7 @@ class ColumnCollection implements Iterator, Traversable
         get => count($this->items);
     }
 
-    public function add(Column ...$column)
+    public function add(IColumn ...$column)
     {
         array_push($this->items, ...$column);
         return $this;
@@ -58,7 +59,7 @@ class ColumnCollection implements Iterator, Traversable
     }
     
 
-    public static function make(Column ...$columns): ColumnCollection
+    public static function make(IColumn ...$columns): ColumnCollection
     {
         return new static()->add(...$columns);
     }
