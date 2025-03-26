@@ -145,11 +145,10 @@ final class Column implements IColumn, IColumnRenderer
 
     public function renderCell(Model $rowModel): string
     {
-        $renderedValue = self::cellValue($this, $rowModel);
         if( isset($this->formatterCallback) ) {
-            return $this->formatterCallback->call($this, $renderedValue);
+            return $this->formatterCallback->__invoke($rowModel);
         }
-        return $renderedValue;
+        return self::cellValue($this, $rowModel);
     }
 
     public static function cellValue( IColumn $column, Model $rowModel )
@@ -181,9 +180,10 @@ final class Column implements IColumn, IColumnRenderer
         }
     }
 
-    public function hookFormatter(Closure $callback)
+    public function hookFormatter(Closure $callback) : self
     {
         $this->formatterCallback = $callback;
+        return $this;
     }
 
     public static function createUrlFromMappedRoute(IColumn $column, Model $rowModel)

@@ -22,6 +22,7 @@ use Mmt\GenericTable\Components\Column;
 use Mmt\GenericTable\Components\TableFilterCollection;
 use Mmt\GenericTable\Components\TableFilterItem;
 use Mmt\GenericTable\Enums\ColumnSettingFlags;
+use Mmt\GenericTable\Enums\DatabaseEventQueryState;
 use Mmt\GenericTable\Enums\FilterType;
 use Mmt\GenericTable\Enums\PaginationRack;
 use Mmt\GenericTable\Interfaces\{IActionColumn, IDragDropReordering, IEvent, IExportable,IGenericTable,IPaginationRack, IRowsPerPage, IBulkAction, ILoadingIndicator };
@@ -295,6 +296,7 @@ class Table extends LivewireComponent
         if($this->tableObject instanceof IEvent) {
             
             $eventArgs = new DatabaseEvent(
+                DatabaseEventQueryState::INITIALIZING,
                 $query,
                 $this->injectedArguments
             );
@@ -323,6 +325,17 @@ class Table extends LivewireComponent
         $this->applyMultiSelectionFilterToQuery($query);
 
         $this->applyDateFilterToQuery($query);
+
+        if($this->tableObject instanceof IEvent) {
+
+            $eventArgs = new DatabaseEvent(
+                DatabaseEventQueryState::ENDS,
+                $query,
+                $this->injectedArguments
+            );
+
+            $this->tableObject->dispatchCallback($eventArgs);
+        }
         
         if($paginate == true)
         {
@@ -441,22 +454,36 @@ class Table extends LivewireComponent
             $table = $this->model->getTable();
 
             foreach ($this->tableObject->columns as $column) {
-                if(Column::columnIsRelationship($column)) {
-                    $foreignKey = Column::relationshipForeignKey( $column, $this->model );
 
-                    /**
-                     * 
-                     * Sometimes, when you have two or more columns with similar relationship paths
-                     * the foreign key may be repeated. For example a column with product.subdepartment.department
-                     * and product.subdepartment.name may have the same foreign key subdepartment_id in products table
-                     * 
-                     */
-                    if(isset($foreignKey) && array_find($selection, fn($e) => $e == $foreignKey) == null) {
-                        $selection[] = "$table.$foreignKey";
-                    }
+                /**
+                 * 
+                 * If the column has the EMPTY flag, the selection will
+                 * fill it with arbitrary data
+                 * 
+                 */
+                if(ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::EMPTY)) {
+                    $selection[] = DB::raw('"" as "' . $column->databaseColumnName .'"');
                 }
                 else {
-                    $selection[] = "$table.$column->databaseColumnName";
+
+                    if(Column::columnIsRelationship($column)) {
+                        $foreignKey = Column::relationshipForeignKey( $column, $this->model );
+    
+                        /**
+                         * 
+                         * Sometimes, when you have two or more columns with similar relationship paths
+                         * the foreign key may be repeated. For example a column with product.subdepartment.department
+                         * and product.subdepartment.name may have the same foreign key subdepartment_id in products table
+                         * 
+                         */
+                        if(isset($foreignKey) && array_find($selection, fn($e) => $e == $foreignKey) == null) {
+                            $selection[] = "$table.$foreignKey";
+                        }
+                    }
+                    else {
+                        $selection[] = "$table.$column->databaseColumnName";
+                    }
+
                 }
             }
             
@@ -738,7 +765,7 @@ class Table extends LivewireComponent
 
         $jsonData = json_decode($jsonData, true);
         $model = $this->model::find($jsonData['id']);
-        $oldPos = $model->order;
+        $oldPos = $model->{$this->dragDropUseColumn};
         $page = $this->getPage(
             $this->pageName
         );

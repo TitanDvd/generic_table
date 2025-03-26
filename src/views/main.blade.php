@@ -314,7 +314,7 @@
                                 </div>
                             </th>
                             
-                            @if( $columnActionIndex-1 >= $index && $index == $this->columns->count-1 && $isActionColumnActive == true)
+                            @if( $columnActionIndex-1 >= $index && $index == $this->tableObject->columns->count-1 && $isActionColumnActive == true)
                                 <th>Action</th>
                             @endif
 
@@ -361,7 +361,7 @@
                                         {!! $this->cellHtmlOutput($column, $modelItem) !!}
                                     </td>
 
-                                    @if( $columnActionIndex-1 >= $idx && $idx == $this->columns->count-1 && $isActionColumnActive == true)
+                                    @if( $columnActionIndex-1 >= $idx && $idx == $this->tableObject->columns->count-1 && $isActionColumnActive == true)
                                         <td>{{ $this->actionView($modelItem) }}</td>
                                     @endif
 
