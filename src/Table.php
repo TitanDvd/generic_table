@@ -69,6 +69,8 @@ class Table extends LivewireComponent
     public array $injectedArguments = [];
     public $listeners = ['refresh_generic_table' => '$refresh', 'refreshGenericTable' => '$refresh'];
     public bool $useCustomLoadingIndicator = false;
+    public string $genericId;
+    public string $cid;
 
     
     final protected int $paginationRack = 0;
@@ -155,6 +157,9 @@ class Table extends LivewireComponent
 
     public function mount(string $table, array $args = [])
     {
+        $this->cid = 'a'.uniqid();
+        $this->genericId = 'generic_table_'.$this->cid;
+
         foreach ($args as $key => $value) {
             $this->injectedArguments[$key] = $value;
         }
@@ -310,6 +315,7 @@ class Table extends LivewireComponent
         }
         
         if($this->sortedColumn != '') {
+
             if(Column::columnIsRelationship($this->sortedColumn)) {
                 // Sadly we need to force a JOIN due to how Eloquent handles
                 // relationships 
@@ -317,6 +323,22 @@ class Table extends LivewireComponent
             }
             else {
                 $query->orderBy($this->sortedColumn, $this->sort == 1 ? 'ASC' : 'DESC');
+            }
+        }
+        else {
+
+            // Set the default sort
+            foreach ($this->tableObject->columns as $column) {
+
+                [$column, $order] = $this->defaultColumnAndOrder($column);
+
+                if(isset($column, $order)) {
+                    $this->sortedColumn = $column; 
+                    $this->sort = $order;
+
+                    $query->orderBy( $this->sortedColumn, $this->sort == 1 ? 'ASC' : 'DESC');
+                    break;
+                }
             }
         }
 
@@ -820,16 +842,9 @@ class Table extends LivewireComponent
         }
     }
 
-    private function defaultColumnAndOrder(Column $column) : array
+    private function defaultColumnAndOrder(IColumn $column) : array
     {
-        if($column->isDefaultSort() == true) {
-            
-            // If column is visible ...
-            if(ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::HIDDEN) == false) {
-                // ... automatically add sorteable settings
-                ColumnSettingFlags::addFlag($column->settings, ColumnSettingFlags::SORTABLE);
-            }
-            
+        if(Column::columnHasDefaultSort($column)) {
             // Leave only the latest set of DEFAULT_SORT_xxx
             $defaultSort = ColumnSettingFlags::sanitizeSortFlags($column->settings);
 
@@ -837,11 +852,12 @@ class Table extends LivewireComponent
                         ColumnSettingFlags::hasFlag($defaultSort, ColumnSettingFlags::DEFAULT_SORT_ASC);
             return [
                 $column->databaseColumnName,
-                $isAscOrder == true ? 'asc' :'desc'
+                $isAscOrder == true ? 1 : 2
             ];
         }
-
-        return [null, null];
+        else {
+            return [null, null];
+        }
     }
 
     public function hydrate()
@@ -901,9 +917,9 @@ class Table extends LivewireComponent
     public function tableLoader()
     {
         if($this->useCustomLoadingIndicator) {
-            return $this->tableObject->tableLoadingIndicatorView();
+            return $this->tableObject->tableLoadingIndicatorView($this->genericId);
         }
-        return view('generic_table::table_loader');
+        return view('generic_table::table_loader', ['genericId' => $this->genericId]);
     }
 
     public function columnIsHidden(IColumn $column)

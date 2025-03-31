@@ -13,5 +13,5 @@ interface ILoadingIndicator
      * possisionated as absolute
      * 
      */
-    public function tableLoadingIndicatorView() : View;
+    public function tableLoadingIndicatorView(string $genericId) : View;
 }

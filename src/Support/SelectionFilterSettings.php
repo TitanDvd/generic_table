@@ -11,6 +11,11 @@ class SelectionFilterSettings
         public string $databaseColumnName    
     ) { }
 
+    /**
+     * 
+     * Add a possible filter value to the filter collection
+     * 
+     */
     public function add(string $filterLabel, string $filterValue) : self
     {
         $this->possibleValues[$filterLabel] = $filterValue;

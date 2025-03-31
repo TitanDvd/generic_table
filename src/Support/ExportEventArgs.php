@@ -2,12 +2,12 @@
 
 namespace Mmt\GenericTable\Support;
 
+use Arr;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
 use Mmt\GenericTable\Components\ColumnCollection;
 use Mmt\GenericTable\Enums\ColumnSettingFlags;
-use Mmt\GenericTable\Interfaces\IGenericTable;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ExportEventArgs
@@ -45,7 +45,7 @@ class ExportEventArgs
             if(ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::EXPORTABLE)) {
                 foreach ($queryResult as $item) {
                     if(isset($this->formatters[$column->databaseColumnName]) && $this->settings->useFormatters) {
-                        $data[$column->columnTitle][] = $this->bindersCallback->call($this->formatters[$column->databaseColumnName], $item);
+                        $data[$column->columnTitle][] = $this->bindersCallback->__invoke($this->formatters[$column->databaseColumnName], $item);
                     }
                     else {
                         $data[$column->columnTitle][] = $item->{$column->databaseColumnName};

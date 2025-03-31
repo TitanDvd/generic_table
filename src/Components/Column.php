@@ -9,19 +9,19 @@ use Mmt\GenericTable\Attributes\MappedRoute;
 use Mmt\GenericTable\Enums\ColumnSettingFlags;
 use Mmt\GenericTable\Interfaces\IColumn;
 use Mmt\GenericTable\Interfaces\IColumnRenderer;
+use Mmt\GenericTable\Traits\WithColumnBuilder;
 use Schema;
 use Str;
 
 final class Column implements IColumn, IColumnRenderer
 {
+    use WithColumnBuilder;
+
     public int $settings = 0;
 
     public array $filters = [];
 
     public ?MappedRoute $mappedRoute = null;
-
-    private ?Closure $formatterCallback;
-    
 
     public function __construct(public string $columnTitle, public ?string $databaseColumnName = null)
     {
@@ -59,12 +59,6 @@ final class Column implements IColumn, IColumnRenderer
         return $this;
     }
 
-    private function withFilters()
-    {
-
-        return $this;
-    }
-
     private function defaultColumnSettings()
     {
         ColumnSettingFlags::addFlags($this->settings,
@@ -73,7 +67,6 @@ final class Column implements IColumn, IColumnRenderer
             ColumnSettingFlags::TOGGLE_VISIBILITY
         );
     }
-    
 
     public static function defaultCollection(Model $model) : ColumnCollection
     {
@@ -125,6 +118,13 @@ final class Column implements IColumn, IColumnRenderer
     public function isSorteable()
     {
         return ColumnSettingFlags::hasFlag($this->settings, ColumnSettingFlags::SORTABLE);
+    }
+
+    public static function columnHasDefaultSort(IColumn $column)
+    {
+        return ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::DEFAULT_SORT_ASC) ||
+                ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::DEFAULT_SORT_ASC) ||
+                ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::DEFAULT_SORT_DESC);
     }
 
     /**
@@ -180,12 +180,6 @@ final class Column implements IColumn, IColumnRenderer
         }
     }
 
-    public function hookFormatter(Closure $callback) : self
-    {
-        $this->formatterCallback = $callback;
-        return $this;
-    }
-
     public static function createUrlFromMappedRoute(IColumn $column, Model $rowModel)
     {
         if( count($column->mappedRoute->routeParams) > 0) {
@@ -194,7 +188,6 @@ final class Column implements IColumn, IColumnRenderer
         }
         return '##';
     }
-
 
     public static function getNestedRelationValue(Model $model, string $relationPath)
     {
@@ -220,7 +213,6 @@ final class Column implements IColumn, IColumnRenderer
     {
         return !self::columnIsRelationship($column);
     }
-    
 
     /**
      * 

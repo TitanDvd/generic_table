@@ -1,4 +1,4 @@
-<div class="container-fluid px-2">
+<div class="container-fluid px-2" id ="{{ $genericId }}">
     
     @include('generic_table::confirm_action_modal')
     
@@ -268,9 +268,8 @@
                 </div>
             @else
                 
-                <table class="table m-0" id ="generic_table">
+                <table class="table m-0" id ="{{ $genericId }}">
                     <thead>
-
                         @if($this->hasBulkActions)
                             <th>
                                 <input type="checkbox" wire:model.live = "isAllSelected">
@@ -390,65 +389,88 @@
     <script src ="{{ route('generic_table_js', ['filename' => 'dragula.min.js']) }}"  type="text/javascript"></script>
     <script src ="{{ route('generic_table_js', ['filename' => 'tableDragDrop.js']) }}"  type="text/javascript"></script>
     <script>
-        /** Global scope of the bulk action method name */
-        let bulkActionMethodName = null;
+        (() => {
+            
+            /** Global scope of the bulk action method name */
+            let bulkActionMethodName = null;
+            
 
-        document.addEventListener('livewire:initialized', () => {
-            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+            document.addEventListener('livewire:initialized', () => {
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+                const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-            Livewire.on('orderingCompleted', args => {
-                @this.tableReOrderCompleted(args.order, args.data)
-            });
+                let dragulaDispatcher = (i, e) => {
+                    @this.dispatch('orderingCompleted', {order: i, data: e.getAttribute('ordering-data')});
+                }
+                
+                dragDropInit(@this.genericId, dragulaDispatcher);
 
-            let toggleLoader = () => {
-                let loader = document.querySelector('#generic_table_loader');
-                if(loader) {
-                    if(loader.style.display === 'none') {
-                        loader.style.display = 'block';
+                @this.on('orderingCompleted', args => {
+                    @this.tableReOrderCompleted(args.order, args.data)
+                });
+
+                let toggleLoader = () => {
+                    let loader = document.querySelector('#' + @this.genericId + '_loading_indicator');
+                    
+                    if(loader) {
+                        if(loader.style.display === 'none') {
+                            loader.style.display = 'block';
+                        }
+                        else {
+                            loader.style.display = 'none';
+                        }
+                    }
+                }
+
+                /** Dispatchs the event to a confirmation modal */
+                @this.on('dispatchBulkEvent', ({dispatcher, requireConfirmation})=>{
+                    
+
+                    if(requireConfirmation == 1) {
+                        const myModalAlternative = new bootstrap.Modal('#confirmBulkOperation')
+                        myModalAlternative.show();
+                        bulkActionMethodName = dispatcher;
                     }
                     else {
-                        loader.style.display = 'none';
+                        @this.bulkActionsDispatcher(dispatcher);
                     }
-                }
-            }
+                });
 
-            /** Dispatchs the event to a confirmation modal */
-            Livewire.on('dispatchBulkEvent', ({dispatcher, requireConfirmation})=>{
+                /** Dispatch an event to server */
+                @this.on('dispatchBulkMethodName', () => {
+                    @this.bulkActionsDispatcher(bulkActionMethodName);
+                });
+
+                @this.on('genericTableHandleOrdering', () => {
+                    @this.genericSystemTableHandleOrdering();
+                })
                 
+                // Should help to re-instance dragulaJS
+                @this.hook('morph.added',  ({ el }) => {
 
-                if(requireConfirmation == 1) {
-                    const myModalAlternative = new bootstrap.Modal('#confirmBulkOperation')
-                    myModalAlternative.show();
-                    bulkActionMethodName = dispatcher;
-                }
-                else {
-                    @this.bulkActionsDispatcher(dispatcher);
-                }
-            });
+                    if(el.id == @this.genericId) {
+                        let selector = '#' + @this.genericId;
+                        
+                        dragDropInit(@this.genericId, dragulaDispatcher);
+                    }
+                })
 
-            /** Dispatch an event to server */
-            Livewire.on('dispatchBulkMethodName', () => {
-                @this.bulkActionsDispatcher(bulkActionMethodName);
-            });
-
-            Livewire.on('genericTableHandleOrdering', () => {
-                @this.genericSystemTableHandleOrdering();
-            })
-
-            Livewire.hook('commit', ({ component, commit, respond, succeed, fail }) => {
-                
-                if(component.name == 'generic_table') {
-                    toggleLoader();
-            
-                    respond(() => {
+                @this.hook('commit', ({ component, commit, respond, succeed, fail }) => {
+                    
+                    
+                    let cname = component.name +'_'+@this.cid;
+                    
+                    if(cname == @this.genericId) {
                         toggleLoader();
-                    })
-                }
+                
+                        respond(() => {
+                            toggleLoader();
+                        })
+                    }
 
+                });
             });
-        });
-
+        })()
         
     </script>
 </div>

@@ -37,7 +37,7 @@ final class ExportSettings
 
     private function excelLibInstalled()
     {
-        return class_exists(\Maatwebsite\Excel\Concerns\Exportable::class) == true;
+        return \Composer\InstalledVersions::isInstalled('maatwebsite/excel');
     }
 
 
