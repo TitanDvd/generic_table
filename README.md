@@ -1,4 +1,5 @@
 
+
 # Generic Table: Laravel+Livewire package to automatize HTML tables
 
 ## Introduction
@@ -174,7 +175,12 @@ that's all the selection Eloquent will perform. Engine will automatically adds
 foreign keys but they won't be part of the model passed in callbacks or implemented 
 interface methods.
 ```
-----
+### The empty column
+An empty column is a special setting  that forces column to not be used in the selection query as existing column but column with an empty value. You just need to be sure that this column name isn't already used in the component. For example:
+```php
+new  Column('Bird')->empty()
+```
+The above example will set up a column in the HTML output called "Bird," with all its cells empty. In the "Row Model," you'll have something like `"bird" => ""`. This way, you can use this column however you like without referencing an existing column and format its value to your liking. Formatters are still required, though, as you don't want an empty column (most of the time). This is to avoid referencing an existing column that you don't need to be visible.
 
 ## IBulkAction
 
@@ -492,7 +498,7 @@ See the example:
 ```php
 // Example in table definition
 
-public function tableLoadingIndicatorView(): \Illuminate\View\View
+public function tableLoadingIndicatorView(string  $genericId): \Illuminate\View\View
 {
     return view('custom-loader');
 }
@@ -500,51 +506,15 @@ public function tableLoadingIndicatorView(): \Illuminate\View\View
 ```
 
 ```html
-<div id = "generic_table_loader" class="position-absolute top-0 start-0 w-100 h-100" style="display:none; background: rgba(0, 0, 0, 0.5)">
-    <div class="d-flex h-100">
-        <div class="m-auto d-flex flex-column">
-            <div class="spinner-border mx-auto text-danger" role="status"></div>
-            <div class="text-white">Loading</div>
-        </div>
-    </div>
+<div class="position-absolute top-0 start-0 w-100 h-100"  style="display:none; background: rgba(0, 0, 0, 0.5); z-index: 100;"  id = "{{  $genericId  }}_loading_indicator">
+	<div class="d-flex h-100">
+		<div class="m-auto d-flex flex-column">
+			<div class="spinner-border mx-auto text-warning"  role="status"></div>
+			<div class="text-white">Loading</div>
+		</div>
+	</div>
 </div>
 ```
-
-## Attributes
-The package have some useful attributes that worths mentioning:
-
-1. [CellFormatter](#cellformatter)
-2. [OnReorder](#onreorder)
-
-
-## CellFormatter
-When a cell is about to be rendered, the engine will call the method targeted by the attribute, to aply a format to the cell. The attribute expects the `database column name`. The only argument passed to the callback is an instance of the model in representing the entire row. The output will always be treated as HTML string, so **be aware of the security concerns**.
-
-```php
-#[CellFormatter('id')]
-public function idFormatter(Model $modelItem)
-{
-    return '<b class = "text-primary">#</b> '.$modelItem->id;
-}
-```
-
-## OnReorder
-This attribute will help you to make a custom handler for the `IDragDropReordering` interface implementation. See [How to Implement IDragDropReordering interface](#idragdropreordering )
-
-## Traits
-1. [WithGenericTable](#withgenerictable)
-    - [refreshGenericTable](#withgenerictablerefreshgenerictable)
-    - [injectParams](#withgenerictableinjectparamsarray-params)
- 
-
-### WithGenericTable
-It was designed to be a sort of helper for the `Generic Table Definition`.
-
-#### WithGenericTable::refreshGenericTable()
-Dispatch an event called `refreshGenericTable` to force the the component reload
-
-#### WithGenericTable::injectParams(array $params)
-Dispatch an event called `injectParams` to "inject" arbitrary data into the `generic table` component. See [How to implement IEvent][idragdropreordering]
 
 ## IColumn and IColumnRenderer
 
@@ -576,7 +546,6 @@ interface  IColumnRenderer
 	public  function  renderCell(Model  $rowModel) : string;
 }
 ```
-
 All you need is implements the above method. Once the system reaches the moment to render your column, it will call your method definition instead of the internal one. Keep in mind that the output will always be rendered as HTML so be aware of the **security concerns**.
 
 An example of how to implement your own column definition
@@ -642,3 +611,52 @@ $this->columns->add(new  IconColumn()->setIconIf(function(Model  $rowModel) use(
 	}
 }));
 ```
+## Attributes
+The package have some useful attributes that worths mentioning:
+
+1. [CellFormatter](#cellformatter)
+2. [OnReorder](#onreorder)
+
+
+## CellFormatter
+When a cell is about to be rendered, the engine will call the method targeted by the attribute, to aply a format to the cell. The attribute expects the `database column name`. The only argument passed to the callback is an instance of the model in representing the entire row. The output will always be treated as HTML string, so **be aware of the security concerns**.
+
+```php
+#[CellFormatter('id')]
+public function idFormatter(Model $modelItem)
+{
+    return '<b class = "text-primary">#</b> '.$modelItem->id;
+}
+```
+
+## OnReorder
+This attribute will help you to make a custom handler for the `IDragDropReordering` interface implementation. See [How to Implement IDragDropReordering interface](#idragdropreordering )
+
+## Traits
+1. [WithGenericTable](#withgenerictable)
+    - [refreshGenericTable](#withgenerictablerefreshgenerictable)
+    - [injectParams](#withgenerictableinjectparamsarray-params)
+2. [WithColumnBuilder](#withcolumnbuilder)
+ 
+
+### WithGenericTable
+It was designed to be a sort of helper for the `Generic Table Definition`.
+
+#### WithGenericTable::refreshGenericTable()
+Dispatch an event called `refreshGenericTable` to force the the component reload
+
+#### WithGenericTable::injectParams(array $params)
+Dispatch an event called `injectParams` to "inject" arbitrary data into the `generic table` component. See [How to implement IEvent][idragdropreordering]
+
+### WithColumnBuilder
+The `WithColumnBuilder` attribute was designed to give you and your column users a more intuitive way to interact with all the possible combinations of settings in a column. It's recommended that you use it on your custom columns, as it provides some default behaviors. By doing so, you'll comply with the package standards, and users will be able to intuitively find those methods and build tables with clean code.
+#### Methods of WithColumnBuilder
+ - `hide()` Hides the column 
+ - `sortable()` Allows the column to be used in the `orderBy` Eloquent method
+ - `defaultSort()` Sets the column as the initial column to be sorted 
+ - `defaultSortAsc()` Sets the column as the initial column to be sorted by `ASC`
+ - `defaultSortDesc()` Sets the column as the initial column to be sorted by `DESC`
+ - `empty()` Tells the system that all the cells of this column will be empty (See [The empty column](#theemptycolumn))
+ - `exportable()` This column will present in the export callback
+ - `searchable()` Users will be able to search in this column
+ - `hookFormatter(Closure)`Intercepts the call of `IColumnRenderer::renderCell(Model  $rowModel)` to use a custom output
