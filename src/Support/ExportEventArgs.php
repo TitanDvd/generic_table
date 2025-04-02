@@ -32,30 +32,28 @@ class ExportEventArgs
      */
     public function populate(?ColumnCollection $newColumns = null)
     {
-        $data = [];
-
         if(isset($newColumns)) {
             $this->columns = $newColumns;
         }
 
         /** @var Builder */
         $queryResult = $this->query->get();
-    
+
         foreach ($this->columns as $column) {
             if(ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::EXPORTABLE)) {
+                $this->headers[] = $column->columnTitle;
+                $rowIndex = 0;
                 foreach ($queryResult as $item) {
                     if(isset($this->formatters[$column->databaseColumnName]) && $this->settings->useFormatters) {
-                        $data[$column->columnTitle][] = $this->bindersCallback->__invoke($this->formatters[$column->databaseColumnName], $item);
+                        $this->rows[$rowIndex][] = $this->bindersCallback->__invoke($this->formatters[$column->databaseColumnName], $item);
                     }
                     else {
-                        $data[$column->columnTitle][] = $item->{$column->databaseColumnName};
+                        $this->rows[$rowIndex][] = $item->{$column->databaseColumnName};
                     }
+                    $rowIndex++;
                 }
-            }    
+            }
         }
-        
-        $this->headers = array_keys($data);
-        $this->rows = array_values($data);
     }
 
 

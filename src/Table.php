@@ -309,7 +309,7 @@ class Table extends LivewireComponent
             $this->tableObject->dispatchCallback($eventArgs);
         }
         
-        if($this->dragDropUseColumn != '' && $this->useDragDropReordering == true && $this->isReordering == true) {
+        if($this->dragDropUseColumn != '' && $this->useDragDropReordering == true) {
             $this->sortedColumn = $this->dragDropUseColumn;
             $this->sort = 1;
         }
@@ -780,21 +780,30 @@ class Table extends LivewireComponent
      * @internal
      * 
      */
-    public function tableReOrderCompleted(int $newPosition, string $jsonData)
+    public function tableReOrderCompleted(array $jsonData)
     {
         $callbackMakeReordering = false;
         $callbackMethodNameIsSetted = isset($this->onReorderCallbackMethod);
-
-        $jsonData = json_decode($jsonData, true);
-        $model = $this->model::find($jsonData['id']);
-        $oldPos = $model->{$this->dragDropUseColumn};
-        $page = $this->getPage(
-            $this->pageName
-        );
         
-        $offset = $page > 1 ? ($this->rowsPerPage*$page)-$this->rowsPerPage : 0;
-        $newPosition += 1 + $offset;
+        $elementId = json_decode($jsonData['element'], true)['id'];
+        $siblingId = json_decode($jsonData['sibling'], true)['id'];
 
+        $model = $this->model::find($elementId);
+        $newPosModel = $this->model::find($siblingId);
+        $oldPos = $model->{$this->dragDropUseColumn};
+
+        /**
+         * The new position sibling have a offset that I adjust
+         * by taking the previous ordered model 
+         */
+        $newPosition = $newPosModel->{$this->dragDropUseColumn};
+        
+        if($oldPos < $newPosition)
+            $newPosition -= 1;
+        else if($oldPos == $newPosition) {
+            $newPosition += 1;
+        }
+        
         if($callbackMethodNameIsSetted == true && method_exists($this,  $this->onReorderCallbackMethod)) {
             $callbackMakeReordering = $this->{$this->onReorderCallbackMethod}($newPosition, $oldPos, $model);
         }
@@ -811,8 +820,8 @@ class Table extends LivewireComponent
                 WHERE `$modelPrimaryKey` = {$model->$modelPrimaryKey}
             SQL);
             
-            // Moving up
             if($oldPos > $newPosition){
+                // Moving up
                 DB::update(<<<SQL
                     UPDATE $tableName
                     SET `{$this->dragDropUseColumn}` = `{$this->dragDropUseColumn}` + 1

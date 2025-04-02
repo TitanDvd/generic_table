@@ -12,14 +12,6 @@ dragDropInit = (componentId, updateMethod) => {
     })
     
     genericTableDragula.on('drop', (el, target, source, sibling) => {
-        
-        let childs = Array.from(target.children);
-        console.log(childs)
-        childs.forEach( (e, i) => {
-            if(el == e) {
-                updateMethod(i, e);
-                return;
-            }
-        })
+        updateMethod(el, sibling);
     })
 }

@@ -327,7 +327,7 @@
                     <tbody >
                         @foreach ($this->tableItems as $index => $modelItem)
 
-                            <tr ordering-data="{{ json_encode(['id' => $modelItem->id, 'position' => $index]) }}" wire:key = "{{ $modelItem->id }}">
+                            <tr ordering-data="{{ json_encode(['id' => $modelItem->id]) }}" wire:key = "{{ $modelItem->id }}">
 
                                 @if($this->hasBulkActions)
                                     <td>
@@ -399,14 +399,18 @@
                 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
                 const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-                let dragulaDispatcher = (i, e) => {
-                    @this.dispatch('orderingCompleted', {order: i, data: e.getAttribute('ordering-data')});
+                let dragulaDispatcher = (e, p) => {
+                    element = e.getAttribute('ordering-data');
+                    @this.dispatch('orderingCompleted', {
+                        element: e.getAttribute('ordering-data'),
+                        sibling: p?.getAttribute('ordering-data') ?? element
+                    });
                 }
                 
                 dragDropInit(@this.genericId, dragulaDispatcher);
 
                 @this.on('orderingCompleted', args => {
-                    @this.tableReOrderCompleted(args.order, args.data)
+                    @this.tableReOrderCompleted(args)
                 });
 
                 let toggleLoader = () => {
