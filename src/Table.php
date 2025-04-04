@@ -787,7 +787,8 @@ class Table extends LivewireComponent
         
         $elementId = json_decode($jsonData['element'], true)['id'];
         $siblingId = json_decode($jsonData['sibling'], true)['id'];
-
+        $siblingIsLastElement = $jsonData['siblingIsLastElement'];
+        
         $model = $this->model::find($elementId);
         $newPosModel = $this->model::find($siblingId);
         $oldPos = $model->{$this->dragDropUseColumn};
@@ -796,13 +797,10 @@ class Table extends LivewireComponent
          * The new position sibling have a offset that I adjust
          * by taking the previous ordered model 
          */
-        $newPosition = $newPosModel->{$this->dragDropUseColumn};
+        $newPosition = $newPosModel?->{$this->dragDropUseColumn};
         
-        if($oldPos < $newPosition)
+        if($siblingIsLastElement == false && $oldPos < $newPosition)
             $newPosition -= 1;
-        else if($oldPos == $newPosition) {
-            $newPosition += 1;
-        }
         
         if($callbackMethodNameIsSetted == true && method_exists($this,  $this->onReorderCallbackMethod)) {
             $callbackMakeReordering = $this->{$this->onReorderCallbackMethod}($newPosition, $oldPos, $model);

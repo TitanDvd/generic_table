@@ -12,6 +12,14 @@ dragDropInit = (componentId, updateMethod) => {
     })
     
     genericTableDragula.on('drop', (el, target, source, sibling) => {
-        updateMethod(el, sibling);
+        
+        let toLastElement = false;
+        if(sibling == undefined) {
+            sibling =  el.previousElementSibling;
+            toLastElement = true;
+        }
+
+        
+        updateMethod(el, sibling, toLastElement);
     })
 }

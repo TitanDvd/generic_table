@@ -118,99 +118,104 @@
                 </div>
 
                 
+                @php
+                    $searchableColumns = $this->resolveSearchColumns()
+                @endphp
 
-                <div class="col-12 col-lg-3">
-                    
-                    <div class="row g-{{ $useExport == true ? '2' : '0' }} justify-content-end">
+                @if( count($searchableColumns) > 0 || $useExport == true)
+                    <div class="col-12 col-lg-3">
+                        
+                        <div class="row g-{{ $useExport == true ? '2' : '0' }} justify-content-end">
 
-                        @if( count(($searchableColumns = $this->resolveSearchColumns())) > 0)
-                            <div class="col-{{ $useExport == true ? '10' : '' }}">
-                                <div class="input-group">
-                                    @if($this->searchKeyWord != '' && count($this->searchByColumns))
-                                        <button class="btn btn-warning btn-sm" wire:click = "resetSearch">
-                                            <svg 
-                                                xmlns="http://www.w3.org/2000/svg" 
-                                                width="24" 
-                                                height="24" 
-                                                viewBox="0 0 24 24">
-                                                    <path 
-                                                        fill="currentColor" 
-                                                        d="M14.76 20.83L17.6 18l-2.84-2.83l1.41-1.41L19 16.57l2.83-2.81l1.41 1.41L20.43 18l2.81 2.83l-1.41 1.41L19 19.4l-2.83 2.84zM12 12v7.88c.04.3-.06.62-.29.83a.996.996 0 0 1-1.41 0L8.29 18.7a.99.99 0 0 1-.29-.83V12h-.03L2.21 4.62a1 1 0 0 1 .17-1.4c.19-.14.4-.22.62-.22h14c.22 0 .43.08.62.22a1 1 0 0 1 .17 1.4L12.03 12z"/>
-                                                </svg>
-                                        </button>
-                                    @endif
-        
-                                    <input {{ count($this->selectedSearchColumn()) == 0 ? 'disabled' : '' }} wire:model = "searchKeyWord" type="text" class="form-control" placeholder="Search...">
-        
-                                    <div class="btn-group">
-        
-                                        <div class="dropdown-menu shadow" wire:ignore.self>
-        
-                                            <form class="px-3 pt-2 " style="width: 250px">
-                                                <li class="p-2 text-center" style="cursor: default">Select columns to search by</li>
-                                                <hr class="dropdown-divider" />
-                    
-                                                <div class="p-2 pb-1">
-                                                    @foreach ($searchableColumns as $i => $column)
-                                                        <div>
-                    
-                                                            <label class="mb-3" data-bs-auto-close="outside">
-                                                                <input type="checkbox" wire:model.live = "searchByColumns.{{ $i }}.{{ $column->databaseColumnName }}">
-                                                                {{ $column->columnTitle }}
-                                                            </label>
-                                                            
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </form>
-                                        </div>
-        
-                                        <button {{ count($this->selectedSearchColumn()) == 0 ? 'disabled' : '' }} class="btn btn-primary btn-sm" wire:click = "search">Search</button>
-                                        <button
-                                            class="btn btn-secondary btn-sm" 
-                                            data-bs-toggle="dropdown" 
-                                            data-bs-auto-close="outside" 
-                                            wire:click = "$dispatch('toggleSearchBoxState')" wire:ignore.self>
-                                                <svg xmlns="http://www.w3.org/2000/svg" 
-                                                    width="20" 
-                                                    height="20" 
-                                                    viewBox="0 0 20 20">
+                            @if( count($searchableColumns) > 0)
+                                <div class="col-{{ $useExport == true ? '10' : '' }}">
+                                    <div class="input-group">
+                                        @if($this->searchKeyWord != '' && count($this->searchByColumns))
+                                            <button class="btn btn-warning btn-sm" wire:click = "resetSearch">
+                                                <svg 
+                                                    xmlns="http://www.w3.org/2000/svg" 
+                                                    width="24" 
+                                                    height="24" 
+                                                    viewBox="0 0 24 24">
                                                         <path 
                                                             fill="currentColor" 
-                                                            d="M8.5 3a5.5 5.5 0 0 1 4.227 9.02l4.127 4.126a.5.5 0 0 1-.638.765l-.07-.057l-4.126-4.127q-.514.428-1.12.723a5.5 5.5 0 0 0-.286-.977a4.5 4.5 0 1 0-6.562-3.281q-.496.136-.952.358Q3 9.04 3 8.5A5.5 5.5 0 0 1 8.5 3m-5.435 8.442a2 2 0 0 1-1.43 2.478l-.461.118a4.7 4.7 0 0 0 .01 1.016l.35.083a2 2 0 0 1 1.455 2.519l-.126.422q.387.307.834.518l.325-.344a2 2 0 0 1 2.91.002l.337.358q.44-.203.822-.498l-.156-.556a2 2 0 0 1 1.43-2.479l.461-.117a4.7 4.7 0 0 0-.01-1.017l-.349-.082a2 2 0 0 1-1.456-2.52l.126-.421a4.3 4.3 0 0 0-.835-.519l-.324.344a2 2 0 0 1-2.91-.001l-.337-.358a4.3 4.3 0 0 0-.822.497zM5.5 15.5a1 1 0 1 1 0-2a1 1 0 0 1 0 2"/>
-                                                </svg>
-                                        </button>
+                                                            d="M14.76 20.83L17.6 18l-2.84-2.83l1.41-1.41L19 16.57l2.83-2.81l1.41 1.41L20.43 18l2.81 2.83l-1.41 1.41L19 19.4l-2.83 2.84zM12 12v7.88c.04.3-.06.62-.29.83a.996.996 0 0 1-1.41 0L8.29 18.7a.99.99 0 0 1-.29-.83V12h-.03L2.21 4.62a1 1 0 0 1 .17-1.4c.19-.14.4-.22.62-.22h14c.22 0 .43.08.62.22a1 1 0 0 1 .17 1.4L12.03 12z"/>
+                                                    </svg>
+                                            </button>
+                                        @endif
+            
+                                        <input {{ count($this->selectedSearchColumn()) == 0 ? 'disabled' : '' }} wire:model = "searchKeyWord" type="text" class="form-control" placeholder="Search...">
+            
+                                        <div class="btn-group">
+            
+                                            <div class="dropdown-menu shadow" wire:ignore.self>
+            
+                                                <form class="px-3 pt-2 " style="width: 250px">
+                                                    <li class="p-2 text-center" style="cursor: default">Select columns to search by</li>
+                                                    <hr class="dropdown-divider" />
+                        
+                                                    <div class="p-2 pb-1">
+                                                        @foreach ($searchableColumns as $i => $column)
+                                                            <div>
+                        
+                                                                <label class="mb-3" data-bs-auto-close="outside">
+                                                                    <input type="checkbox" wire:model.live = "searchByColumns.{{ $i }}.{{ $column->databaseColumnName }}">
+                                                                    {{ $column->columnTitle }}
+                                                                </label>
+                                                                
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                </form>
+                                            </div>
+            
+                                            <button {{ count($this->selectedSearchColumn()) == 0 ? 'disabled' : '' }} class="btn btn-primary btn-sm" wire:click = "search">Search</button>
+                                            <button
+                                                class="btn btn-secondary btn-sm" 
+                                                data-bs-toggle="dropdown" 
+                                                data-bs-auto-close="outside" 
+                                                wire:click = "$dispatch('toggleSearchBoxState')" wire:ignore.self>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" 
+                                                        width="20" 
+                                                        height="20" 
+                                                        viewBox="0 0 20 20">
+                                                            <path 
+                                                                fill="currentColor" 
+                                                                d="M8.5 3a5.5 5.5 0 0 1 4.227 9.02l4.127 4.126a.5.5 0 0 1-.638.765l-.07-.057l-4.126-4.127q-.514.428-1.12.723a5.5 5.5 0 0 0-.286-.977a4.5 4.5 0 1 0-6.562-3.281q-.496.136-.952.358Q3 9.04 3 8.5A5.5 5.5 0 0 1 8.5 3m-5.435 8.442a2 2 0 0 1-1.43 2.478l-.461.118a4.7 4.7 0 0 0 .01 1.016l.35.083a2 2 0 0 1 1.455 2.519l-.126.422q.387.307.834.518l.325-.344a2 2 0 0 1 2.91.002l.337.358q.44-.203.822-.498l-.156-.556a2 2 0 0 1 1.43-2.479l.461-.117a4.7 4.7 0 0 0-.01-1.017l-.349-.082a2 2 0 0 1-1.456-2.52l.126-.421a4.3 4.3 0 0 0-.835-.519l-.324.344a2 2 0 0 1-2.91-.001l-.337-.358a4.3 4.3 0 0 0-.822.497zM5.5 15.5a1 1 0 1 1 0-2a1 1 0 0 1 0 2"/>
+                                                    </svg>
+                                            </button>
+                                            
+                                        </div>
                                         
                                     </div>
-                                    
                                 </div>
-                            </div>
-                        @endif
+                            @endif
 
-                        @if($useExport == true)
-                            <div class="col-2">
-                                <div role="button" class="d-flex p-1 rounded bg-warning h-100" data-bs-toggle="tooltip" data-bs-title="Export" wire:click = "internalExport">
-                                    <svg
-                                        class="m-auto"
-                                        xmlns="http://www.w3.org/2000/svg" 
-                                        width="24" 
-                                        height="24" 
-                                        viewBox="0 0 24 24" 
-                                        fill="none" 
-                                        stroke="currentColor" 
-                                        stroke-width="2" 
-                                        stroke-linecap="round" 
-                                        stroke-linejoin="round">
-                                            <polyline points="8 17 12 21 16 17"></polyline>
-                                            <line x1="12" y1="12" x2="12" y2="21"></line>
-                                            <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"></path>
-                                    </svg>
+                            @if($useExport == true)
+                                <div class="col-2">
+                                    <div role="button" class="d-flex p-1 rounded bg-warning h-100" data-bs-toggle="tooltip" data-bs-title="Export" wire:click = "internalExport">
+                                        <svg
+                                            class="m-auto"
+                                            xmlns="http://www.w3.org/2000/svg" 
+                                            width="24" 
+                                            height="24" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none" 
+                                            stroke="currentColor" 
+                                            stroke-width="2" 
+                                            stroke-linecap="round" 
+                                            stroke-linejoin="round">
+                                                <polyline points="8 17 12 21 16 17"></polyline>
+                                                <line x1="12" y1="12" x2="12" y2="21"></line>
+                                                <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"></path>
+                                        </svg>
+                                    </div>
                                 </div>
-                            </div>
-                        @endif
+                            @endif
 
+                        </div>
                     </div>
-                </div>
+                @endif
             </div>
         </div>
 
@@ -399,11 +404,12 @@
                 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
                 const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-                let dragulaDispatcher = (e, p) => {
+                let dragulaDispatcher = (e, p, l) => {
                     element = e.getAttribute('ordering-data');
                     @this.dispatch('orderingCompleted', {
                         element: e.getAttribute('ordering-data'),
-                        sibling: p?.getAttribute('ordering-data') ?? element
+                        sibling: p?.getAttribute('ordering-data'),
+                        siblingIsLastElement: l
                     });
                 }
                 
