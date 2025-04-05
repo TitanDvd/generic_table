@@ -3,12 +3,13 @@
 namespace Mmt\GenericTable\Traits;
 
 use Mmt\GenericTable\Enums\FilterType;
-use Mmt\GenericTable\Interfaces\ISingleSelectionFilter;
+use Mmt\GenericTable\Interfaces\IColumnFilter;
+use Mmt\GenericTable\Support\SingleFilter;
 use Str;
 
 trait WithSingleSelectionFilter
 {
-    public string $appliedSingleSelectionFilters = '';
+    public array $appliedSingleSelectionFilters = [];
 
     private function singleSelectionFiltersInUse(&$filtersInUse)
     {
@@ -16,7 +17,14 @@ trait WithSingleSelectionFilter
             return;
         }
 
-        $jsonObj = json_decode($this->appliedSingleSelectionFilters);
+        foreach($this->appliedSingleSelectionFilters as $filterInJson) {
+            $this->setFiltersInUse($filterInJson, $filtersInUse);
+        }
+    }
+
+    private function setFiltersInUse(string $json, array &$filtersInUse)
+    {
+        $jsonObj = json_decode($json);
     
         $filtersInUse[] = [
             'type'   => 'single',
@@ -24,19 +32,32 @@ trait WithSingleSelectionFilter
             'label'  => $jsonObj->label,
             'value'  => $jsonObj->value
         ];
-        
     }
 
     
-    public function removeSingleSelectionFilter() : void
+    public function removeSingleSelectionFilter(string $column, string $value) : void
     {
-        $this->appliedSingleSelectionFilters = '';
+        $newArr = [];
+        foreach ($this->appliedSingleSelectionFilters as $filterJson) {
+            $jsonObj = json_decode($filterJson);
+            if($column != $jsonObj->column || $value != $jsonObj->value){
+                $newArr[] = $filterJson;
+            }
+        }
+        $this->appliedSingleSelectionFilters = $newArr;
     }
 
 
     public function applySingleSelectionFilterToQuery(&$query)
     {
-        $jsonObj = json_decode($this->appliedSingleSelectionFilters);
+        foreach ($this->appliedSingleSelectionFilters as $filterJsonInfo) {
+            $this->applyFilter($filterJsonInfo, $query);
+        }
+    }
+
+    private function applyFilter($jsonFilter, &$query)
+    {
+        $jsonObj = json_decode($jsonFilter);
 
         if($jsonObj == null || $jsonObj->value == -1)
             return;
@@ -69,10 +90,14 @@ trait WithSingleSelectionFilter
 
     public function registerSingleSelectionFilter() : void
     {
-        if($this->tableObject instanceof ISingleSelectionFilter) {
-            $this->filters->add($this->tableObject->singleSelectionFilterSettings->databaseColumnName)
-            ->with($this->tableObject->singleSelectionFilterSettings->possibleValues)
-            ->as(FilterType::SINGLE_SELECTION);
+        if($this->tableObject instanceof IColumnFilter) {
+            foreach ($this->tableObject->filters as $filter) {
+                if($filter instanceof SingleFilter) {
+                    $this->filters->add($filter->databaseColumnName)
+                    ->with($filter->possibleValues)
+                    ->as(FilterType::SINGLE_SELECTION);
+                }
+            }
         }
     }
 }

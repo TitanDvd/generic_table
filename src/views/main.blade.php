@@ -8,7 +8,11 @@
         <div class="col-12 border-bottom">
             <div class="row justify-content-between g-3 py-3">
                 
-                <div class="col-12 col-lg-8">
+                @php
+                    $searchableColumns = $this->resolveSearchColumns()
+                @endphp
+
+                <div class="col-12 col-lg-{{ count($searchableColumns) == 0 && $useExport == false ? 12 : 8 }}">
                     <div class="row g-3">
                         
                         @if ($this->hasBulkActions)
@@ -47,12 +51,12 @@
                         {{-- Draw filters --}}
                         @if($this->filters->count > 0)
                         
-                            @foreach ($this->filters as $filter)
+                            @foreach ($this->filters as $idx => $filter)
                             
                                 <div class="col-12 col-sm-6 col-lg-auto">
 
                                     @if($this->isSingleSelectionFilter($filter))
-                                        <select class="form-select" wire:model.live = "appliedSingleSelectionFilters">
+                                        <select class="form-select" wire:model.live = "appliedSingleSelectionFilters.{{ $idx }}">
                                             <option value="" hidden>Filter by {{ $filter->column }}</option>
                                             @foreach ($filter->possibleValues as $key => $value)
                                                 <option value="{{ json_encode(['column' => $filter->column, 'value' => $value, 'label' => $key]) }}">{{ $key }}</option>
@@ -117,12 +121,8 @@
                     </div>
                 </div>
 
-                
-                @php
-                    $searchableColumns = $this->resolveSearchColumns()
-                @endphp
 
-                @if( count($searchableColumns) > 0 || $useExport == true)
+                @if(count($searchableColumns) > 0 || $useExport == true)
                     <div class="col-12 col-lg-3">
                         
                         <div class="row g-{{ $useExport == true ? '2' : '0' }} justify-content-end">
@@ -220,8 +220,8 @@
         </div>
 
         {{-- List of applied filters --}}
-        @if( count(($appliedFilters = $this->appliedFilters())) > 0)
-            <div class="col-12 border-bottom m-0 p-1">
+        @if( ($appliedFiltersCount = count(($appliedFilters = $this->appliedFilters()))) > 0)
+            <div class="col-12 m-0 p-1">
                 <div class="row gap-2 ms-2">
                     <small class="col-auto p-0">Applied Filters:</small>
 
@@ -261,7 +261,7 @@
             $isAllowSorting = fn($column, $isReordering) => $this->columnIsSorteable($column) == true && $isReordering == false; 
         @endphp
 
-        <div class="col-12 px-0 overflow-auto mb-3 position-relative">
+        <div class="col-12 px-0 overflow-auto {{ $appliedFiltersCount > 0 ? 'border-top' : '' }} position-relative m-0">
             {{-- Shows the loading indicator when a request is sent to the server --}}
             {{ $this->tableLoader() }}
 

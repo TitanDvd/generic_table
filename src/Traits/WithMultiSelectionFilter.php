@@ -3,7 +3,8 @@
 namespace Mmt\GenericTable\Traits;
 
 use Mmt\GenericTable\Enums\FilterType;
-use Mmt\GenericTable\Interfaces\IMultiSelectionFilter;
+use Mmt\GenericTable\Interfaces\IColumnFilter;
+use Mmt\GenericTable\Support\MultiFilter;
 use Str;
 
 trait WithMultiSelectionFilter
@@ -29,7 +30,7 @@ trait WithMultiSelectionFilter
                     });
                 }
                 else {
-                    $query->orWhere($jsonObj->column, $jsonObj->value);
+                    $query->where($jsonObj->column, $jsonObj->value);
                 }
             }
         }
@@ -72,10 +73,14 @@ trait WithMultiSelectionFilter
 
     private function registerMultiSelectionFilters()
     {
-        if($this->tableObject instanceof IMultiSelectionFilter) {
-            $this->filters->add($this->tableObject->multiSelectionFilterSettings->databaseColumnName)
-            ->with($this->tableObject->multiSelectionFilterSettings->possibleValues)
-            ->as(FilterType::MULTI_SELECTION);
+        if($this->tableObject instanceof IColumnFilter) {
+            foreach ($this->tableObject->filters as $filter) {
+                if($filter instanceof MultiFilter) {
+                    $this->filters->add($filter->databaseColumnName)
+                    ->with($filter->possibleValues)
+                    ->as(FilterType::MULTI_SELECTION);
+                }
+            }
         }
     }
 }

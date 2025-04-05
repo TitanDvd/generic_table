@@ -2,10 +2,6 @@
 
 namespace Mmt\GenericTable;
 
-
-use Closure;
-use DB;
-use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,17 +17,31 @@ use Mmt\GenericTable\Attributes\OnReorder;
 use Mmt\GenericTable\Components\Column;
 use Mmt\GenericTable\Components\TableFilterCollection;
 use Mmt\GenericTable\Components\TableFilterItem;
-use Mmt\GenericTable\Enums\ColumnSettingFlags;
-use Mmt\GenericTable\Enums\DatabaseEventQueryState;
-use Mmt\GenericTable\Enums\FilterType;
-use Mmt\GenericTable\Enums\PaginationRack;
-use Mmt\GenericTable\Interfaces\{IActionColumn, IDragDropReordering, IEvent, IExportable,IGenericTable,IPaginationRack, IRowsPerPage, IBulkAction, ILoadingIndicator };
-use Mmt\GenericTable\Interfaces\IColumn;
-use Mmt\GenericTable\Interfaces\IColumnRenderer;
-use Mmt\GenericTable\Support\DatabaseEvent;
-use Mmt\GenericTable\Support\EventArgs;
-use Mmt\GenericTable\Support\ExportEventArgs;
-use Mmt\GenericTable\Support\ExportSettings;
+use Mmt\GenericTable\Enums\{
+    ColumnSettingFlags,
+    DatabaseEventQueryState,
+    FilterType,
+    PaginationRack
+};
+use Mmt\GenericTable\Interfaces\{
+    IActionColumn, 
+    IDragDropReordering, 
+    IEvent, 
+    IExportable,
+    IGenericTable,
+    IPaginationRack,
+    IRowsPerPage,
+    IBulkAction,
+    ILoadingIndicator,
+    IColumn,
+    IColumnRenderer
+};
+use Mmt\GenericTable\Support\{
+    DatabaseEvent,
+    EventArgs,
+    ExportEventArgs,
+    ExportSettings
+};
 use Mmt\GenericTable\Traits\WithBulkActions;
 use Mmt\GenericTable\Traits\WithDateFilters;
 use Mmt\GenericTable\Traits\WithMultiSelectionFilter;
@@ -40,6 +50,9 @@ use ReflectionClass;
 use ReflectionMethod;
 use ReflectionProperty;
 use Str;
+use Closure;
+use DB;
+use Exception;
 
 
 class Table extends LivewireComponent
@@ -728,7 +741,7 @@ class Table extends LivewireComponent
     public function removeFilter($type, $column, $value)
     {
         if($type == 'single')
-            $this->removeSingleSelectionFilter();
+            $this->removeSingleSelectionFilter($column, $value);
         if($type == 'multi')
             $this->removeFromMultiSelectionFilter($column, $value);
         if($type == 'date')
