@@ -84,8 +84,7 @@ break down of all interfaces that exists at the moment.
 - [IGenericTable](#igenerictable)
 - [IBulkAction](#ibulkaction)
 - [IDateRangeFilter](#idaterangefilter)
-- [ISingleSelectionFilter](#isingleselectionfilter)
-- [IMultiSelectionFilter](#imultiselectionfilter)
+- [IColumnFilter](#isingleselectionfilter)
 - [IRowsPerPage](#irowsperpage)
 - [IPaginationRack](#ipaginationrack)
 - [IActionColumn](#iactioncolumn)
@@ -234,29 +233,26 @@ $this->dateFilterSettings = new DateFilterSettings('created_at',
 
 Additionally, you can specify the `CommonDateFilter::CUSTOM_RANGE` case to instruct the engine to allow the user to enter a custom date range from the HTML date input. Or you can use `CommonDateFilter::ALL_RANGES` case to specify that the engine must render all options included `CommonDateFilter::CUSTOM_RANGE` case.
 
-## ISingleSelectionFilter
-This interface has the property declaration `SelectionFilterSettings $singleSelectionFilterSettings`. The HTML code associated to this filter will force the user to choose only one possible filter value at a time. So, if you want to filter products by their status the way to do is:
+## IColumnFilter
+This interface has the FilterCollection property declaration $filters. It can contain a collection of two types of filters: SingleFilter or MultiFilter. As the name suggests, one allows you to configure a filter for a single value at a time, and the other for multiple values ​​at once:
 ```php
 // Example
 
-$this->singleSelectionFilterSettings = new SelectionFilterSettings('status')
-    ->add('Out of stock', 'out_of_stock')
-    ->add('Discontinued', 'discontinued')
-    ->add('Available', 'available');
+$this->filters = new  FilterCollection(
+	SingleFilter::make('status', [
+		'Out of stock' => 'out_of_stock',
+		'Discontinued' => 'discontinued',
+		'Available' => 'available'
+	]),
+
+	MultiFilter::make('name', [
+		'Client-1' => 'laborum 505',
+		'Client-2' => 'atque 38829',
+		'Client-3' => 'rem 61603388'
+	])
+);
 ```
-The class `SelectionFilterSettings` receives as its first argument the column to filter, then, using the `builder pattern` the possible values to filter can concatenated using the `add` method. The first argument of the `add` method is the filter label while the second is the possible value for that particular case.
-
-## IMultiSelectionFilter
-This interfaces behaves the same as `ISingleSelectionFilter` but multiple values can be selected at once. The selected values are not inclusive, so they are interpreted as `AND` in the query string. To use the interface you need to implement `SelectionFilterSettings $multiSelectionFilterSettings` property. See the following example:
-```php
-// Example
-
-$this->$multiSelectionFilterSettings = new SelectionFilterSettings('status')
-    ->add('Out of stock', 'out_of_stock')
-    ->add('Discontinued', 'discontinued')
-    ->add('Available', 'available');
-```
-
+The `SingleFilter` and `MultiFilter` classes inherit from `FilterSettings`, so they both behave identically. The `::make($sqlColumn, $possibleValues)` constructor and method receive the column to filter as the first argument, and the second, an array of the possible values ​​to filter.
 ## IRowsPerPage
 If you need to change the default behavior of the rows displayed per page or explicitly set the initial value of the rows per page you should implement the `IRowsPerPage` interface. The property `$rowsPerPage` will set the initial set of rows displayed and `$rowsPerPageOptions` property will overwrite the `Rows per page` options in the html output.
 
