@@ -234,7 +234,7 @@ $this->dateFilterSettings = new DateFilterSettings('created_at',
 Additionally, you can specify the `CommonDateFilter::CUSTOM_RANGE` case to instruct the engine to allow the user to enter a custom date range from the HTML date input. Or you can use `CommonDateFilter::ALL_RANGES` case to specify that the engine must render all options included `CommonDateFilter::CUSTOM_RANGE` case.
 
 ## IColumnFilter
-This interface has the FilterCollection property declaration $filters. It can contain a collection of two types of filters: SingleFilter or MultiFilter. As the name suggests, one allows you to configure a filter for a single value at a time, and the other for multiple values ​​at once:
+This interface has the `FilterCollection` property declaration `$filters`. It can contain a collection of two types of filters: `SingleFilter` or `MultiFilter`. As the name suggests, one allows you to configure a filter for a single value at a time, and the other for multiple values ​​at once:
 ```php
 // Example
 
