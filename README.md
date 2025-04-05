@@ -84,7 +84,7 @@ break down of all interfaces that exists at the moment.
 - [IGenericTable](#igenerictable)
 - [IBulkAction](#ibulkaction)
 - [IDateRangeFilter](#idaterangefilter)
-- [IColumnFilter](#isingleselectionfilter)
+- [IColumnFilter](#icolumnfilter)
 - [IRowsPerPage](#irowsperpage)
 - [IPaginationRack](#ipaginationrack)
 - [IActionColumn](#iactioncolumn)
