@@ -35,10 +35,6 @@ final class Column implements IColumn, IColumnRenderer
         if(empty($this->databaseColumnName)) {
             $this->databaseColumnName = Str::snake($columnTitle);
         }
-
-        ColumnSettingFlags::addFlags($this->settings,
-            ColumnSettingFlags::SORTABLE
-        );
     }
 
     public function withSettings(ColumnSettingFlags ...$moreSettings)
