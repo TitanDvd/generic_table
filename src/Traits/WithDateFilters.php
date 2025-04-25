@@ -66,7 +66,9 @@ trait WithDateFilters
                 'type' => 'date',
                 'column' => $jsonObj->column,
                 'label' => "{$dateRange[0]} - {$dateRange[1]}",
-                'value' => 'Date Range'
+                'value' => 'Date Range',
+                'showLabel' => $jsonObj->showLabel,
+                'customLabel' => $jsonObj->customLabel
             ];
         }
     }
@@ -120,6 +122,8 @@ trait WithDateFilters
 
             $this->filters
             ->add($this->tableObject->dateFilterSettings->databseColumnName)
+            ->useLabel($this->tableObject->dateFilterSettings->showLabel)
+            ->label($this->tableObject->dateFilterSettings->customLabel)
             ->with($possibleValues)
             ->as(FilterType::DATE_RANGE);
         }

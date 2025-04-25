@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Mmt\GenericTable\Attributes\MappedRoute;
 use Mmt\GenericTable\Enums\ColumnSettingFlags;
+use Mmt\GenericTable\Interfaces\ICellData;
 use Mmt\GenericTable\Interfaces\IColumn;
 use Mmt\GenericTable\Interfaces\IColumnRenderer;
+use Mmt\GenericTable\Interfaces\IRow;
+use Mmt\GenericTable\Interfaces\IRowData;
+use Mmt\GenericTable\Support\Row;
 use Mmt\GenericTable\Traits\WithColumnBuilder;
 use Schema;
+use stdClass;
 use Str;
 
 final class Column implements IColumn, IColumnRenderer
@@ -22,6 +27,8 @@ final class Column implements IColumn, IColumnRenderer
     public array $filters = [];
 
     public ?MappedRoute $mappedRoute = null;
+
+    public int $columnIndex;
 
     public function __construct(public string $columnTitle, public ?string $databaseColumnName = null)
     {
@@ -98,14 +105,14 @@ final class Column implements IColumn, IColumnRenderer
         return $columnsCollection;
     }
 
-    public static function resolveColumnBinders(IColumn $column, Model $rowModel)
+    public static function resolveColumnBinders(IColumn $column, IRowData $rowModel)
     {
         $newParams = [];
 
         foreach ($column->mappedRoute->routeParams as $index => $param) {
             if(Str::startsWith($param, [':'])) {
                 $bindedColumn = Str::substr($param, 1);
-                $newParams[$index] = $rowModel->{$bindedColumn};
+                $newParams[$index] = $rowModel->origin->{$bindedColumn};
             }
             else {
                 $newParams[$index] = $param;
@@ -143,62 +150,42 @@ final class Column implements IColumn, IColumnRenderer
         ColumnSettingFlags::hasFlag($this->settings, ColumnSettingFlags::DEFAULT_SORT_DESC);
     }
 
-    public function renderCell(Model $rowModel): string
+    public function renderCell(ICellData $cell, IRowData $row): string|null
     {
         if( isset($this->formatterCallback) ) {
-            return $this->formatterCallback->__invoke($rowModel);
+            return $this->formatterCallback->__invoke($row);
         }
-        return self::cellValue($this, $rowModel);
+        return self::cellValue($this, $cell, $row);
     }
 
-    public static function cellValue( IColumn $column, Model $rowModel )
+    public static function cellValue( IColumn $column, ICellData $cell, IRowData $row ) : string|null
     {
         if( isset($column->mappedRoute) ) {
             
-            $route = self::createUrlFromMappedRoute($column, $rowModel);
+            $route = self::createUrlFromMappedRoute($column, $row);
 
             $linkLabel = $column->mappedRoute->label;
 
             if( $linkLabel == '' ) {
-                if(self::columnIsRelationship($column->databaseColumnName)) {
-                    $linkLabel = self::getNestedRelationValue($rowModel, $column->databaseColumnName) ?? '';
-                }
-                else {
-                    $linkLabel = $rowModel->{$column->databaseColumnName} ?? '';
-                }
+                $linkLabel = $cell->value;
             }
 
             return <<<HTML
                 <a href = "$route">$linkLabel</a>
             HTML;
         }
-        else if( self::columnIsRelationship($column->databaseColumnName) ) {
-            return self::getNestedRelationValue($rowModel, $column->databaseColumnName) ?? '';
-        }
         else {
-            return $rowModel->{$column->databaseColumnName} ?? '';
+            return $cell->value;
         }
     }
 
-    public static function createUrlFromMappedRoute(IColumn $column, Model $rowModel)
+    public static function createUrlFromMappedRoute(IColumn $column, IRowData $rowModel)
     {
         if( count($column->mappedRoute->routeParams) > 0) {
             $routeParams = Column::resolveColumnBinders($column, $rowModel);
             return route($column->mappedRoute->route, $routeParams);
         }
         return '##';
-    }
-
-    public static function getNestedRelationValue(Model $model, string $relationPath)
-    {
-        $relations = explode('.', $relationPath);
-        foreach ($relations as $relation) {
-            if (!$model) {
-                return null;
-            }
-            $model = $model->$relation;
-        }
-        return $model;
     }
 
     public static function columnIsRelationship( IColumn|string $column )
@@ -219,14 +206,14 @@ final class Column implements IColumn, IColumnRenderer
      * Returns the foreign key of a relationship
      * 
      */
-    public static function relationshipForeignKey( IColumn|string $column, Model $model ) : string|null
+    public static function relationshipForeignKey( IColumn|string $column, Model|stdClass $row ) : string|null
     {
         $selection        = self::getRelationshipPath($column);
         $relationshipName = explode('.', $selection)[0];
-        $relationInstance = $model->{$relationshipName}();
+        $relationInstance = $row->{$relationshipName}();
 
         if($relationInstance instanceof BelongsTo) {
-            return $model->{$relationshipName}()->getForeignKeyName();
+            return $row->{$relationshipName}()->getForeignKeyName();
         }
         return null;
     }

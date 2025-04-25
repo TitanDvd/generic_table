@@ -41,4 +41,7 @@ interface IColumn
      * 
      */
     public ?MappedRoute $mappedRoute {get; set;}
+
+    
+    public int $columnIndex {get; set;}
 }

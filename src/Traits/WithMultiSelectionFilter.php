@@ -25,7 +25,7 @@ trait WithMultiSelectionFilter
                     $column = substr($jsonObj->column, $lastDotPosition + 1);
                     $value = $jsonObj->value;
                     
-                    $query->orWhereHas($relationShip, function($q) use($column, $value) {
+                    $query->whereHas($relationShip, function($q) use($column, $value) {
                         $q->where($column, $value);
                     });
                 }
@@ -39,12 +39,10 @@ trait WithMultiSelectionFilter
     private function multiSelectionFiltersInUse(&$filtersInUse)
     {
         foreach($this->appliedMultiSelectionFilters as $selectionJsonValue) {
-            $jsonObj = json_decode($selectionJsonValue);
+            $jsonObj = json_decode($selectionJsonValue, true);
             $filtersInUse[] = [
                 'type'   => 'multi',
-                'column' => $jsonObj->column,
-                'label'  => $jsonObj->label,
-                'value'  => $jsonObj->value
+                ...$jsonObj
             ];
         }
     }
@@ -78,6 +76,8 @@ trait WithMultiSelectionFilter
                 if($filter instanceof MultiFilter) {
                     $this->filters->add($filter->databaseColumnName)
                     ->with($filter->possibleValues)
+                    ->useLabel($filter->showLabel)
+                    ->label($filter->customLabel)
                     ->as(FilterType::MULTI_SELECTION);
                 }
             }

@@ -59,7 +59,13 @@
                                         <select class="form-select" wire:model.live = "appliedSingleSelectionFilters.{{ $idx }}">
                                             <option value="" hidden>Filter by {{ $filter->column }}</option>
                                             @foreach ($filter->possibleValues as $key => $value)
-                                                <option value="{{ json_encode(['column' => $filter->column, 'value' => $value, 'label' => $key]) }}">{{ $key }}</option>
+                                                <option value="{{ json_encode([
+                                                    'column' => $filter->column, 
+                                                    'value' => $value, 
+                                                    'label' => $key,
+                                                    'customLabel' => $filter->customLabel,
+                                                    'showLabel' => $filter->showLabel
+                                                ]) }}">{{ $key }}</option>
                                             @endforeach
                                         </select>
                                     @endif
@@ -77,7 +83,13 @@
                                                 @foreach ($filter->possibleValues as $key => $value)
                                                     <li class="dropdown-item">
                                                         <label>
-                                                            <input value = "{{ json_encode(['column' => $filter->column, 'value' => $value, 'label' => $key]) }}" wire:model.live = "appliedMultiSelectionFilters" type="checkbox">
+                                                            <input value = "{{ json_encode([
+                                                                    'column' => $filter->column, 
+                                                                    'value' => $value, 
+                                                                    'label' => $key,
+                                                                    'customLabel' => $filter->customLabel,
+                                                                    'showLabel' => $filter->showLabel
+                                                                ])}}" wire:model.live = "appliedMultiSelectionFilters" type="checkbox">
                                                             {{ $key }}
                                                         </label>
                                                     </li>
@@ -87,6 +99,7 @@
                                     @endif
 
                                     @if($this->isDateFilter($filter))
+                                    {{-- {{ dd($filter) }} --}}
                                         @if($this->isCustomFilterApplied())
                                             <div class="row g-3">
                                                 <div class="col-5">
@@ -107,7 +120,13 @@
                                             <select class="form-select" wire:model.live = "dateRangeAppliedFilters">
                                                 <option value="-1" hidden>Select a common date range...</option>
                                                 @foreach ($filter->possibleValues as $filterName => $filterValue)
-                                                    <option value="{{ json_encode(['column' => $filter->column, 'value' => $filterValue, 'label' => $filterName]) }}">{{ $filterName }}</option>
+                                                    <option value="{{ json_encode([
+                                                        'column' => $filter->column, 
+                                                        'value' => $filterValue, 
+                                                        'label' => $filterName,
+                                                        'customLabel' => $filter->customLabel,
+                                                        'showLabel' => $filter->showLabel
+                                                    ]) }}">{{ $filterName }}</option>
                                                 @endforeach
                                             </select>
                                         @endif
@@ -224,10 +243,19 @@
             <div class="col-12 m-0 p-1">
                 <div class="row gap-2 ms-2">
                     <small class="col-auto p-0">Applied Filters:</small>
-
+                    
                     @foreach ($appliedFilters as $filter)
                         <div class="col-auto badge bg-primary-subtle text-primary d-flex">
-                            <div class="me-1">{{ $filter['column'] }}: {{ $filter['label'] }}</div>
+                            <div class="me-1">
+                                @if($filter['showLabel'] == true)
+                                    @if($filter['customLabel'] != '')
+                                        {{ $filter['customLabel'] }}
+                                    @else
+                                        {{ $filter['column'] }}
+                                    @endif
+                                @endif
+                                {{ $filter['label'] }}
+                            </div>
                             <svg
                                 wire:click="removeFilter('{{ $filter['type'] }}', '{{ $filter['column'] }}', '{{ $filter['value'] }}')"
                                 role="button"
@@ -285,7 +313,7 @@
                         <th></th>
                         @endif
 
-                        @foreach ($this->tableObject->columns as $index => $column)
+                        @foreach ($this->tableObject->tableSettings->columns as $index => $column)
 
                             @continue($this->columnIsHidden($column))
 
@@ -318,7 +346,7 @@
                                 </div>
                             </th>
                             
-                            @if( $columnActionIndex-1 >= $index && $index == $this->tableObject->columns->count-1 && $isActionColumnActive == true)
+                            @if( $columnActionIndex-1 >= $index && $index == $this->tableObject->tableSettings->columns->count-1 && $isActionColumnActive == true)
                                 <th>Action</th>
                             @endif
 
@@ -332,11 +360,11 @@
                     <tbody >
                         @foreach ($this->tableItems as $index => $modelItem)
 
-                            <tr ordering-data="{{ json_encode(['id' => $modelItem->id]) }}" wire:key = "{{ $modelItem->id }}">
+                            <tr ordering-data="{{ json_encode(['id' => $modelItem?->id ?? 0]) }}" wire:key = "{{ $modelItem?->id ?? 0 }}">
 
                                 @if($this->hasBulkActions)
                                     <td>
-                                        <input type="checkbox"  wire:model.live = "bulkActionData.{{ $modelItem->id }}"/>
+                                        <input type="checkbox"  wire:model.live = "bulkActionData.{{ $modelItem?->id }}"/>
                                     </td>
                                 @endif
 
@@ -353,7 +381,7 @@
                                     </td>
                                 @endif
                                 
-                                @foreach ($this->tableObject->columns as $idx => $column)
+                                @foreach ($this->tableObject->tableSettings->columns as $idx => $column)
 
                                     @continue($this->columnIsHidden($column))
                                     
@@ -365,7 +393,7 @@
                                         {!! $this->cellHtmlOutput($column, $modelItem) !!}
                                     </td>
 
-                                    @if( $columnActionIndex-1 >= $idx && $idx == $this->tableObject->columns->count-1 && $isActionColumnActive == true)
+                                    @if( $columnActionIndex-1 >= $idx && $idx == $this->tableObject->tableSettings->columns->count-1 && $isActionColumnActive == true)
                                         <td>{{ $this->actionView($modelItem) }}</td>
                                     @endif
 
@@ -385,7 +413,7 @@
         </div>
     
         @if( $this->showPaginationRackOnBottom() )
-            <div class="col-12 generic_pagination_link">
+            <div class="col-12 generic_pagination_link overflow-auto">
                 {{ $this->tableItems->links() }}
             </div>
         @endif

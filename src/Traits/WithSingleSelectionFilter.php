@@ -24,13 +24,11 @@ trait WithSingleSelectionFilter
 
     private function setFiltersInUse(string $json, array &$filtersInUse)
     {
-        $jsonObj = json_decode($json);
+        $jsonObj = json_decode($json, true);
     
         $filtersInUse[] = [
             'type'   => 'single',
-            'column' => $jsonObj->column,
-            'label'  => $jsonObj->label,
-            'value'  => $jsonObj->value
+            ...$jsonObj
         ];
     }
 
@@ -95,6 +93,8 @@ trait WithSingleSelectionFilter
                 if($filter instanceof SingleFilter) {
                     $this->filters->add($filter->databaseColumnName)
                     ->with($filter->possibleValues)
+                    ->useLabel($filter->showLabel)
+                    ->label($filter->customLabel)
                     ->as(FilterType::SINGLE_SELECTION);
                 }
             }

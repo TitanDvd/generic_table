@@ -2,7 +2,6 @@
 
 namespace Mmt\GenericTable\Support;
 
-use Arr;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
@@ -18,9 +17,11 @@ class ExportEventArgs
     public function __construct(
         private ColumnCollection $columns, 
         public ExportSettings $settings, 
-        public Builder $query, 
+        public Builder|\Illuminate\Database\Query\Builder $query, 
         private Closure $bindersCallback,
-        private array $formatters
+        private array $formatters,
+        public bool $useStripTags,
+        public string $excludeTags 
     ) { }
 
     /**
@@ -45,11 +46,12 @@ class ExportEventArgs
                 $rowIndex = 0;
                 foreach ($queryResult as $item) {
                     if(isset($this->formatters[$column->databaseColumnName]) && $this->settings->useFormatters) {
-                        $this->rows[$rowIndex][] = $this->bindersCallback->__invoke($this->formatters[$column->databaseColumnName], $item);
+                        $cellValue = $this->bindersCallback->__invoke($this->formatters[$column->databaseColumnName], $item);
                     }
                     else {
-                        $this->rows[$rowIndex][] = $item->{$column->databaseColumnName};
+                        $cellValue = $item->{$column->databaseColumnName};
                     }
+                    $this->rows[$rowIndex][] = $this->useStripTags == true ? strip_tags($cellValue, $this->excludeTags) : $cellValue;
                     $rowIndex++;
                 }
             }

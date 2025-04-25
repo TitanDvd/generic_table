@@ -14,9 +14,15 @@ class DateFilterSettings
      */
     public private(set) array $options = [];
 
+    public bool $showLabel = true;
+
+    public string $customLabel;
+
     public function __construct(public string $databseColumnName, ...$options) 
     {
         $this->options = $options;
+        
+        $this->customLabel = $databseColumnName . ': ';
     }
 
 

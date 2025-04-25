@@ -14,6 +14,7 @@ use Mmt\GenericTable\Attributes\CellFormatter;
 use Mmt\GenericTable\Attributes\ColumnSettings;
 use Mmt\GenericTable\Attributes\MappedRoute;
 use Mmt\GenericTable\Attributes\OnReorder;
+use Mmt\GenericTable\Components\Cell;
 use Mmt\GenericTable\Components\Column;
 use Mmt\GenericTable\Components\TableFilterCollection;
 use Mmt\GenericTable\Components\TableFilterItem;
@@ -23,6 +24,8 @@ use Mmt\GenericTable\Enums\{
     FilterType,
     PaginationRack
 };
+use Mmt\GenericTable\Exceptions\NotImplementedException;
+use Mmt\GenericTable\Exceptions\NotSupportedException;
 use Mmt\GenericTable\Interfaces\{
     IActionColumn, 
     IDragDropReordering, 
@@ -36,23 +39,28 @@ use Mmt\GenericTable\Interfaces\{
     IColumn,
     IColumnRenderer
 };
+use Mmt\GenericTable\Interfaces\ICellData;
 use Mmt\GenericTable\Support\{
     DatabaseEvent,
     EventArgs,
     ExportEventArgs,
     ExportSettings
 };
+use Mmt\GenericTable\Components\Row;
 use Mmt\GenericTable\Traits\WithBulkActions;
 use Mmt\GenericTable\Traits\WithDateFilters;
 use Mmt\GenericTable\Traits\WithMultiSelectionFilter;
 use Mmt\GenericTable\Traits\WithSingleSelectionFilter;
 use ReflectionClass;
 use ReflectionMethod;
+use ReflectionObject;
 use ReflectionProperty;
+use stdClass;
 use Str;
 use Closure;
 use DB;
 use Exception;
+use Mmt\GenericTable\Exceptions\EmptyModelException;
 
 
 class Table extends LivewireComponent
@@ -188,15 +196,21 @@ class Table extends LivewireComponent
         if(!$this->tableObject instanceof IGenericTable) {
             throw new Exception('Class does not implements IGenericTable interface');
         }
+        else if(empty($this->tableObject->tableSettings)) {
+            throw new NotImplementedException('The property GenericTableSettings::$tableSettings is not implemented');
+        }
+        else if(empty($this->tableObject->tableSettings->model)) {
+            throw new EmptyModelException();
+        }
         
-        if(is_object($this->tableObject->model) && $this->tableObject->model instanceof Model) {
-            $this->model = $this->tableObject->model;
+        if(is_object($this->tableObject->tableSettings->model) && $this->tableObject->tableSettings->model instanceof Model) {
+            $this->model = $this->tableObject->tableSettings->model;
         }
         else {
-            $this->model = new $this->tableObject->model;
+            $this->model = new $this->tableObject->tableSettings->model;
         }
-
-        $this->useModelAttributesAsColumns = !isset($this->tableObject->columns);
+        
+        $this->useModelAttributesAsColumns = !isset($this->tableObject->tableSettings->columns);
         
         $this->reflectedClass = new ReflectionClass($this->tableObject);
         $this->pageName = strtolower($this->reflectedClass->getShortName());
@@ -207,13 +221,7 @@ class Table extends LivewireComponent
         else {
             $this->paginationRack = PaginationRack::BOTTOM->value;
         }
-
-        if($this->tableObject instanceof IActionColumn) {
-            $this->isActionColumnActive = true;
-            $this->actionColumnIndex = $this->tableObject->actionColumnIndex;
-            $this->actionColumnViewCallback = fn(Model $modelItem) => $this->tableObject->actionView($modelItem);
-        }
-       
+        
         if($this->tableObject instanceof IDragDropReordering) {
             $this->useDragDropReordering = true;
             $this->dragDropUseColumn = $this->tableObject->orderingColumn ?? 'order';
@@ -248,7 +256,16 @@ class Table extends LivewireComponent
         $this->filters = new TableFilterCollection();
         
         if($this->useModelAttributesAsColumns == true) {
-            $this->tableObject->columns = Column::defaultCollection($this->model);
+            $this->tableObject->tableSettings->columns = Column::defaultCollection($this->model);
+        }
+
+        if($this->tableObject instanceof IActionColumn) {
+            $this->isActionColumnActive = true;
+            $this->actionColumnIndex = $this->tableObject->actionColumnIndex;
+
+            $this->actionColumnViewCallback = fn(Model|stdClass $modelItem) => $this->tableObject->actionView(
+                Row::make($modelItem)
+            );
         }
         
         $this->registerFormatters();
@@ -273,19 +290,26 @@ class Table extends LivewireComponent
     
     private function execQuery(bool $paginate = true, bool $returnQueryBuilder = false): \Illuminate\Database\Eloquent\Builder|Builder|Collection|LengthAwarePaginator
     {
-        $columnSelection = $this->makeSqlSelectionFromColumns();
+        //$columnSelection = $this->makeSqlSelectionFromColumns();
 
         $relationships = $this->columnsRelationships();
 
         $modelTableName = $this->model->getTable();
         
-        $query = DB::query()->from($modelTableName)->select(...$columnSelection);
+        $query = DB::query()->from($modelTableName);//->select(...$columnSelection);
         
-        if(count($relationships) > 0) {
-            $query = $this->model->with($relationships)->setQuery($query);
+        if(!isset($this->tableObject->useBuilder) || $this->tableObject->useBuilder == false) {
+            if(count($relationships) > 0) {
+                $query = $this->model->with($relationships)->setQuery($query);
+            }
+            else {
+                $query = $this->model->setQuery($query);
+            }
         }
         else {
-            $query = $this->model->setQuery($query);
+            if(count($relationships) > 0) {
+                throw new NotSupportedException('Relationships are not supported in Laravel Database Builder');
+            }
         }
 
         if($this->searchKeyWord != '') {
@@ -341,7 +365,7 @@ class Table extends LivewireComponent
         else {
 
             // Set the default sort
-            foreach ($this->tableObject->columns as $column) {
+            foreach ($this->tableObject->tableSettings->columns as $column) {
 
                 [$column, $order] = $this->defaultColumnAndOrder($column);
 
@@ -467,7 +491,7 @@ class Table extends LivewireComponent
     public function columnsRelationships()
     {
         $relationships = [];
-        foreach ($this->tableObject->columns as $column) {
+        foreach ($this->tableObject->tableSettings->columns as $column) {
             if(Column::columnIsRelationship($column)) {
                 $relationships[] = Column::getRelationshipPath($column);
             }
@@ -488,7 +512,7 @@ class Table extends LivewireComponent
             $selection = [];
             $table = $this->model->getTable();
 
-            foreach ($this->tableObject->columns as $column) {
+            foreach ($this->tableObject->tableSettings->columns as $column) {
 
                 /**
                  * 
@@ -511,8 +535,9 @@ class Table extends LivewireComponent
                          * and product.subdepartment.name may have the same foreign key subdepartment_id in products table
                          * 
                          */
-                        if(isset($foreignKey) && array_find($selection, fn($e) => $e == $foreignKey) == null) {
-                            $selection[] = "$table.$foreignKey";
+                        $select = "$table.$foreignKey";
+                        if(isset($foreignKey) && array_find($selection, fn($e) => $e == $select) == null) {
+                            $selection[] = $select;
                         }
                     }
                     else {
@@ -619,7 +644,7 @@ class Table extends LivewireComponent
     final protected function resolveSearchColumns()
     {
         return array_filter(
-            iterator_to_array($this->tableObject->columns), 
+            iterator_to_array($this->tableObject->tableSettings->columns), 
             fn(IColumn $column) => ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::SEARCHABLE)
         );
     }
@@ -763,11 +788,13 @@ class Table extends LivewireComponent
 
         return $this->tableObject->onExport(
             new ExportEventArgs(
-                $this->tableObject->columns, 
+                $this->tableObject->tableSettings->columns, 
                 new ExportSettings(),
                 $this->execQuery(false, true),
                 $binder,
-                $this->formatters
+                $this->formatters,
+                false,
+                ''
             )
         );
     }
@@ -783,7 +810,7 @@ class Table extends LivewireComponent
     }
     
 
-    protected function actionView(Model $modelItem)
+    protected function actionView(Model|stdClass $modelItem)
     {
         return $this->actionColumnViewCallback->call($this, $modelItem);
     }
@@ -953,27 +980,75 @@ class Table extends LivewireComponent
     }
     
 
-    public function findColumnByDatabaseColumnName(string $databseColumnName) : IColumn
-    {
-        return array_find(iterator_to_array($this->tableObject->columns), fn(IColumn $column) => $column->databaseColumnName  ==  $databseColumnName);
-    }
-
-
-    public function cellHtmlOutput(IColumn $column, Model $rowModel)
+    public function cellHtmlOutput(IColumn $column, Model|stdClass $rowModel)
     {
         $formatter = null;
+
+        $iCell = Cell::make($column, $rowModel);
+        $iRow = Row::make($rowModel);
+        
         if(isset($this->formatters[$column->databaseColumnName])) {
             $formatter = $this->formatters[$column->databaseColumnName];
         }
         
         if($column instanceof IColumnRenderer && $formatter == null) {
-            return $column->renderCell($rowModel);
+            return $column->renderCell($iCell, $iRow);
         }
         else if(isset($formatter)) {
-            return $this->tableObject->{$formatter}( $rowModel );
+            return $this->tableObject->{$formatter}( $iCell, $iRow );
         }
         else {
-            return Column::cellValue($column, $rowModel);
+            return Column::cellValue($column, $iCell, $iRow);
         }
+    }
+    
+    private function implementCellInterface($model, $fqcn, IColumn $column) : ICellData
+    {
+        $cell = new $fqcn;
+        $cell->index = $column->columnIndex;
+        $cell->value = $model->{$column->databaseColumnName};
+
+        return $cell;
+    }
+
+    private function implementRowInterface($model, $fqcn, IColumn $column)
+    {
+        $iRow = new $fqcn;
+
+        $objectRef = new ReflectionObject($iRow);
+        $props = $objectRef->getProperties(ReflectionProperty::IS_PUBLIC);
+
+        if($model instanceof stdClass) {
+            foreach ($props as $prop) {
+                $propVal = $model->{$prop->name} ?? null;
+                if($propVal !== null) {
+                    $iRow->{$prop->name} = $model->{$prop->name};
+                }
+            }
+        }
+        else if($model instanceof Model) {
+            foreach ($props as $prop) {
+                $proVal = $model->{$prop->name} ?? null;
+                if($proVal !== null) {
+                    $iRow->{$prop->name} = $model->{$prop->name};
+                }
+            }
+        }
+
+        $iRow->origin = $model;
+
+        return $iRow;
+    }
+
+    private function inferImplementationTypeParams(ReflectionMethod $method) : array
+    {
+        $params = $method->getParameters();
+        $fqcnArr = [];
+
+        foreach ($params as $param) {
+            $fqcnArr[] = $param->getType()?->__tostring();
+        }
+
+        return $fqcnArr;
     }
 }

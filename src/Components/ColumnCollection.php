@@ -24,7 +24,10 @@ class ColumnCollection implements Iterator, Traversable
 
     public function add(IColumn ...$column)
     {
-        array_push($this->items, ...$column);
+        foreach ($column as $col) {
+            $col->columnIndex = count($this->items);
+            array_push($this->items, $col);
+        }
         return $this;
     }
 

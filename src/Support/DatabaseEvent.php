@@ -9,7 +9,7 @@ class DatabaseEvent extends EventArgs
 {
     public function __construct(
         public DatabaseEventQueryState $queryState,
-        public Builder $builder,
+        public Builder|\Illuminate\Database\Query\Builder $builder,
         public $injectedArguments
     ) { }
 }

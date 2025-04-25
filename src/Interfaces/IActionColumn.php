@@ -4,6 +4,7 @@ namespace Mmt\GenericTable\Interfaces;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\View\View;
+use stdClass;
 
 interface IActionColumn
 {
@@ -21,5 +22,5 @@ interface IActionColumn
      * The view to be used to render HTML controls
      * 
      */
-    public function actionView(Model $modelItem) : View;
+    public function actionView(IRowData $row) : View;
 }

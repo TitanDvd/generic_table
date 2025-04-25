@@ -6,9 +6,15 @@ class FilterSettings
 {
     public private(set) array $possibleValues = [];
 
+    public string $customLabel;
 
-    public function __construct(public string $databaseColumnName, array $possibleValues = [])
+    public function __construct(public string $databaseColumnName, array $possibleValues = [], string $label = '', public private(set) bool $showLabel = true)
     {
+        if($label == '')
+            $this->customLabel = $this->databaseColumnName . ':';
+        else
+            $this->customLabel = $label;
+
         foreach ($possibleValues as $key => $value) {
             $this->add($key, $value);
         }
@@ -25,8 +31,8 @@ class FilterSettings
         return $this;
     }
 
-    public static function make(string $databaseColumnName, array $possibleValues = []) : static
+    public static function make(string $databaseColumnName, array $possibleValues = [], string $label = '',  bool $showLabel = true) : static
     {
-        return new static($databaseColumnName, $possibleValues);
+        return new static($databaseColumnName, $possibleValues, $label, $showLabel);
     }
 }

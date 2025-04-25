@@ -27,7 +27,15 @@ class TableFilterItem
 
     public private(set) FilterType $type;
 
-    public function __construct(public string $column, private TableFilterCollection|null $parentFilter) { }
+    public private(set) string $customLabel;
+
+    public private(set) bool $showLabel;
+
+    public function __construct(public string $column, private TableFilterCollection|null $parentFilter)
+    {
+        $this->customLabel = '';
+        $this->showLabel = false;
+    }
 
 
     public function __call($method, $args)
@@ -68,5 +76,17 @@ class TableFilterItem
     public function add(string $column) : TableFilterItem
     {
         return $this->parentFilter->add($column);
+    }
+
+    public function useLabel(bool $use = true) : TableFilterItem
+    {
+        $this->showLabel = $use;
+        return $this;
+    }
+
+    public function label(string $label) : TableFilterItem
+    {
+        $this->customLabel = $label;
+        return $this;
     }
 }
