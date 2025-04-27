@@ -242,11 +242,11 @@
         @if( ($appliedFiltersCount = count(($appliedFilters = $this->appliedFilters()))) > 0)
             <div class="col-12 m-0 p-1">
                 <div class="row gap-2 ms-2">
-                    <small class="col-auto p-0">Applied Filters:</small>
+                    <small class="col-auto p-0 m-auto mx-0">Applied Filters:</small>
                     
                     @foreach ($appliedFilters as $filter)
                         <div class="col-auto badge bg-primary-subtle text-primary d-flex">
-                            <div class="me-1">
+                            <div class="me-1 m-auto">
                                 @if($filter['showLabel'] == true)
                                     @if($filter['customLabel'] != '')
                                         {{ $filter['customLabel'] }}
