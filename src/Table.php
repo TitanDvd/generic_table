@@ -370,6 +370,17 @@ class Table extends LivewireComponent
         $modelTableName = $this->model->getTable();
         
         $query = DB::query()->from($modelTableName)->select(...$columnSelection);
+
+        if($this->tableObject instanceof IEvent) {
+            
+            $eventArgs = new DatabaseEvent(
+                DatabaseEventQueryState::INITIALIZING,
+                $query,
+                $this->injectedArguments
+            );
+
+            $this->tableObject->dispatchCallback($eventArgs);
+        }
         
         $this->buildQuery($relationships, $query);
 
