@@ -16,7 +16,7 @@ class Cell implements ICellData
 
     public $value;
 
-    public static function make(IColumn $column, Model $model) : static
+    public static function make(IColumn $column, Model|stdClass $model) : static
     {
         $cell = new static;
         $cell->index = $column->columnIndex;

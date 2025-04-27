@@ -1019,7 +1019,7 @@ class Table extends LivewireComponent
     }
     
 
-    public function cellHtmlOutput(IColumn $column, Model $rowModel)
+    public function cellHtmlOutput(IColumn $column, Model|stdClass $rowModel)
     {
         $formatter = null;
         
