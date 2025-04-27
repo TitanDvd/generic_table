@@ -9,7 +9,7 @@ use Response;
 final class ExportSettings
 {
     public function __construct(
-        public string $fileName = '',
+        public string $fileName,
         public bool $useFormatters = true,
         public bool $autoNamedOutputFile = true,
         public bool $appendTimeMarkToFilename = true,
@@ -18,7 +18,11 @@ final class ExportSettings
 
     private function makeFileName(): string
     {
-        return "{$this->fileName}" . ($this->appendTimeMarkToFilename == true ? '_'.date('YmdHis') : '') . "." . ($this->excelLibInstalled() ? $this->fileExtension : 'csv');
+        return "{$this->fileName}" . ($this->appendTimeMarkToFilename == true 
+            ? '_'.date('YmdHis') 
+            : '') . "." . ($this->excelLibInstalled() 
+                ? $this->fileExtension 
+                : 'csv');
     }
 
     public function export(array $headers, array $rows)

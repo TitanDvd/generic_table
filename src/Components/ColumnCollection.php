@@ -61,6 +61,10 @@ class ColumnCollection implements Iterator, Traversable
         return count($this->items);
     }
     
+    public function at(int $index): ?IColumn
+    {
+        return $this->items[$index] ?? null;
+    }
 
     public static function make(IColumn ...$columns): ColumnCollection
     {

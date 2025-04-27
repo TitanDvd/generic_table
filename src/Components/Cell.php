@@ -3,6 +3,7 @@
 namespace Mmt\GenericTable\Components;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Mmt\GenericTable\Interfaces\ICellData;
 use Mmt\GenericTable\Interfaces\IColumn;
 use Mmt\GenericTable\Interfaces\IRowData;
@@ -15,28 +16,18 @@ class Cell implements ICellData
 
     public $value;
 
-    public static function make(IColumn $column, Model|stdClass $model) : static
+    public static function make(IColumn $column, Model $model) : static
     {
         $cell = new static;
         $cell->index = $column->columnIndex;
-
-        if( Column::columnIsRelationship($column->databaseColumnName) && $model instanceof Model) {
-            $cellValue = self::getNestedRelationValue($model, $column->databaseColumnName);
+        
+        if($column->isRelationship()) {
+            $cell->value = $model->{Str::snake($column->columnTitle)};
         }
         else {
-            $cellValue = $model->{$column->databaseColumnName};
+            $cell->value = $model->{$column->databaseColumnName};
         }
 
-        $cell->value = $cellValue;
         return $cell;
-    }
-
-    public static function getNestedRelationValue(Model $model, string $relationPath)
-    {
-        $relations = explode('.', $relationPath);
-        foreach ($relations as $relation) {
-            $model = $model->{$relation};
-        }
-        return $model;
     }
 }

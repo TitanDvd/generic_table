@@ -178,7 +178,7 @@
                                                             <div>
                         
                                                                 <label class="mb-3" data-bs-auto-close="outside">
-                                                                    <input type="checkbox" wire:model.live = "searchByColumns.{{ $i }}.{{ $column->databaseColumnName }}">
+                                                                    <input type="checkbox" wire:model.live = "searchByColumns.{{ $column->columnIndex }}">
                                                                     {{ $column->columnTitle }}
                                                                 </label>
                                                                 
@@ -321,7 +321,7 @@
                                 <th>Action</th>
                             @endif
 
-                            <th {!! $isAllowSorting($column, $isReordering) == true ? "wire:click = \"sortColumn('{$column->databaseColumnName}')\" role = \"button\"" : '' !!}>
+                            <th {!! $isAllowSorting($column, $isReordering) == true ? "wire:click = \"sortColumn('{$column->columnIndex}')\" role = \"button\"" : '' !!}>
 
                                 <div class="d-flex px-0 py-1 justify-content-between">
                                     <div class="my-auto me-2">{{ $column->columnTitle }}</div>

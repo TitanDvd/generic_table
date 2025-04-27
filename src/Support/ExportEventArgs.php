@@ -5,6 +5,7 @@ namespace Mmt\GenericTable\Support;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
+use Illuminate\Support\Str;
 use Mmt\GenericTable\Components\ColumnCollection;
 use Mmt\GenericTable\Enums\ColumnSettingFlags;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -46,10 +47,15 @@ class ExportEventArgs
                 $rowIndex = 0;
                 foreach ($queryResult as $item) {
                     if(isset($this->formatters[$column->databaseColumnName]) && $this->settings->useFormatters) {
-                        $cellValue = $this->bindersCallback->__invoke($this->formatters[$column->databaseColumnName], $item);
+                        $cellValue = $this->bindersCallback->__invoke($this->formatters[$column->databaseColumnName], $column, $item);
                     }
                     else {
-                        $cellValue = $item->{$column->databaseColumnName};
+                        if($column->isRelationship()) {
+                            $cellValue = $item->{Str::snake($column->columnTitle)};
+                        }
+                        else {
+                            $cellValue = $item->{$column->databaseColumnName};
+                        }
                     }
                     $this->rows[$rowIndex][] = $this->useStripTags == true ? strip_tags($cellValue, $this->excludeTags) : $cellValue;
                     $rowIndex++;

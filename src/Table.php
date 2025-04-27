@@ -5,6 +5,7 @@ namespace Mmt\GenericTable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\On;
@@ -25,7 +26,6 @@ use Mmt\GenericTable\Enums\{
     PaginationRack
 };
 use Mmt\GenericTable\Exceptions\NotImplementedException;
-use Mmt\GenericTable\Exceptions\NotSupportedException;
 use Mmt\GenericTable\Interfaces\{
     IActionColumn, 
     IDragDropReordering, 
@@ -287,63 +287,113 @@ class Table extends LivewireComponent
         return view('generic_table::main');
     }
     
+    private function buildQuery(array $relationShips, Builder &$query)
+    {
+        $joined = [];
+        $selectedColumns = [];
+        $str = '';
+
+        foreach ($relationShips as $relationshipPath => $columnInterface) {
+            
+            $relatedTableModel = $this->model;
+            
+            //! La variable column tiene que formar parte de la seleccion
+            [$relationship, $column] = Column::getRelationshipPathAndColumn($relationshipPath);
+
+            // La variable relationship aun puede contener una ruta de relaciones
+            $relationshipSlots = explode('.', $relationship);
+
+            foreach ($relationshipSlots as $relationshipMethodname) {
+                
+                $laravelRelationShipMethodResult = $relatedTableModel->{$relationshipMethodname}();
+
+                if($laravelRelationShipMethodResult instanceof BelongsTo) {
+                    // Related
+                    $relatedTableModel = $laravelRelationShipMethodResult->getRelated();
+                    $relatedTablePrimaryKeyName = $relatedTableModel->getKeyName();
+                    $relatedTableName = $relatedTableModel->getTable();
+                    
+                    // Local
+                    $foreignKey = $laravelRelationShipMethodResult->getForeignKeyName();
+                    $currentTable = $laravelRelationShipMethodResult->getChild();
+                    $currentTableName = $currentTable->getTable();
+                    
+                    $joinToStr  = "{$relatedTableName}.{$relatedTablePrimaryKeyName}";
+
+                    if(!in_array($joinToStr, $joined)) {
+                        $str .= "JOIN $relatedTableName ON $joinToStr = {$currentTableName}.{$foreignKey}\r\n";
+                        $joined[]   = $joinToStr;
+                        $query->leftJoin($relatedTableName, $joinToStr, "{$currentTableName}.{$foreignKey}");
+                    }
+                }
+                else if($laravelRelationShipMethodResult instanceof HasOne) {
+                    // Local
+                    $localKey = $laravelRelationShipMethodResult->getForeignKeyName();
+                    $currentTableModel = $laravelRelationShipMethodResult->getParent();
+                    $currentTableName = $currentTableModel->getTable();
+
+                    // Related
+                    $relatedTableModel = $laravelRelationShipMethodResult->getRelated();
+                    $relatedTablePrimaryKey = $relatedTableModel->getKeyName();
+                    $relatedTableName = $relatedTableModel->getTable();
+
+                    $joinToStr = "{$relatedTableName}.{$localKey}";
+                    
+                    if(!in_array($joinToStr, $joined)) {
+                        $str .= "JOIN $relatedTableName ON $joinToStr = {$currentTableName}.{$relatedTablePrimaryKey}\r\n";
+                        $joined[]  = $joinToStr;
+                        $query->leftJoin($relatedTableName, $joinToStr, "{$currentTableName}.{$relatedTablePrimaryKey}");
+                    }
+                    
+                }
+            }
+
+            if(isset($relatedTableName)) {
+                $alias = Str::snake($columnInterface->columnTitle);
+                $columnSelection = "{$relatedTableName}.{$column} as {$alias}";
+                if(!in_array($columnSelection, $selectedColumns)) {
+                    $selectedColumns[] = $columnSelection;
+                }
+            }
+            
+        }
+        
+        $query->addSelect($selectedColumns);
+    }
     
     private function execQuery(bool $paginate = true, bool $returnQueryBuilder = false): \Illuminate\Database\Eloquent\Builder|Builder|Collection|LengthAwarePaginator
     {
-        //$columnSelection = $this->makeSqlSelectionFromColumns();
+        $columnSelection = $this->makeSqlSelectionFromColumns();
 
         $relationships = $this->columnsRelationships();
-
+        
         $modelTableName = $this->model->getTable();
         
-        $query = DB::query()->from($modelTableName);//->select(...$columnSelection);
+        $query = DB::query()->from($modelTableName)->select(...$columnSelection);
         
-        if(!isset($this->tableObject->useBuilder) || $this->tableObject->useBuilder == false) {
-            if(count($relationships) > 0) {
-                $query = $this->model->with($relationships)->setQuery($query);
-            }
-            else {
-                $query = $this->model->setQuery($query);
-            }
-        }
-        else {
-            if(count($relationships) > 0) {
-                throw new NotSupportedException('Relationships are not supported in Laravel Database Builder');
-            }
-        }
+        $this->buildQuery($relationships, $query);
+
+        $query = $this->model->newQuery()->from($query);
 
         if($this->searchKeyWord != '') {
-            
-            $searchInColumns = $this->rebuildDbColumnNameWithRelation($this->searchByColumns);
 
-            $query->orWhere(function($q) use($searchInColumns) {
+            $query->orWhere(function($q) {
                     
-                foreach ($searchInColumns as $columnName) {
-                    $slots = explode('.', $columnName);
-                    $relatedColumn = $slots[count($slots) - 1];
-                    $relation = str_replace('.'.$relatedColumn , '', $columnName);
-
-                    if(Str::contains($columnName, '.')) {
-                        $q->orWhereRelation($relation, $relatedColumn, 'LIKE', '%'. $this->searchKeyWord .'%');
-                    }
-                    else {
-                        $q->orWhere($columnName,'like','%'. $this->searchKeyWord .'%');
+                foreach ($this->searchByColumns as $columnIndex => $shouldUse) {
+                    
+                    if($shouldUse == true) {
+                        $columnInterface = $this->tableObject->tableSettings->columns->at($columnIndex);
+                        if($columnInterface->isRelationship()) {
+                            $q->orWhere(Str::snake($columnInterface->columnTitle),'like', "%{$this->searchKeyWord}%");
+                        }
+                        else {
+                            $q->orWhere($columnInterface->databaseColumnName,'like', "%{$this->searchKeyWord}%");
+                        }
+                        
                     }
                 }
 
             });
-        }
-        
-
-        if($this->tableObject instanceof IEvent) {
-            
-            $eventArgs = new DatabaseEvent(
-                DatabaseEventQueryState::INITIALIZING,
-                $query,
-                $this->injectedArguments
-            );
-
-            $this->tableObject->dispatchCallback($eventArgs);
         }
         
         if($this->dragDropUseColumn != '' && $this->useDragDropReordering == true) {
@@ -352,15 +402,7 @@ class Table extends LivewireComponent
         }
         
         if($this->sortedColumn != '') {
-
-            if(Column::columnIsRelationship($this->sortedColumn)) {
-                // Sadly we need to force a JOIN due to how Eloquent handles
-                // relationships 
-                $this->relationshipSort($query, $this->sortedColumn);
-            }
-            else {
-                $query->orderBy($this->sortedColumn, $this->sort == 1 ? 'ASC' : 'DESC');
-            }
+            $query->orderBy($this->sortedColumn, $this->sort == 1 ? 'ASC' : 'DESC');
         }
         else {
 
@@ -395,7 +437,7 @@ class Table extends LivewireComponent
 
             $this->tableObject->dispatchCallback($eventArgs);
         }
-        
+
         if($paginate == true)
         {
             if($returnQueryBuilder == true){
@@ -493,7 +535,7 @@ class Table extends LivewireComponent
         $relationships = [];
         foreach ($this->tableObject->tableSettings->columns as $column) {
             if(Column::columnIsRelationship($column)) {
-                $relationships[] = Column::getRelationshipPath($column);
+                $relationships[$column->databaseColumnName] = $column;
             }
         }
         return $relationships;
@@ -523,27 +565,8 @@ class Table extends LivewireComponent
                 if(ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::EMPTY)) {
                     $selection[] = DB::raw('"" as "' . $column->databaseColumnName .'"');
                 }
-                else {
-
-                    if(Column::columnIsRelationship($column)) {
-                        $foreignKey = Column::relationshipForeignKey( $column, $this->model );
-    
-                        /**
-                         * 
-                         * Sometimes, when you have two or more columns with similar relationship paths
-                         * the foreign key may be repeated. For example a column with product.subdepartment.department
-                         * and product.subdepartment.name may have the same foreign key subdepartment_id in products table
-                         * 
-                         */
-                        $select = "$table.$foreignKey";
-                        if(isset($foreignKey) && array_find($selection, fn($e) => $e == $select) == null) {
-                            $selection[] = $select;
-                        }
-                    }
-                    else {
-                        $selection[] = "$table.$column->databaseColumnName";
-                    }
-
+                else if(Column::columnIsNotRelationship($column)) {
+                    $selection[] = "$table.$column->databaseColumnName";
                 }
             }
             
@@ -575,9 +598,12 @@ class Table extends LivewireComponent
      * @internal
      * 
      */
-    final protected function binder($methodName, Model $arguments) : string
+    final protected function binder($methodName, IColumn $column, Model $rowModel) : string
     {
-        return $this->tableObject->$methodName($arguments);
+        $iCell = Cell::make($column, $rowModel);
+        $iRow = Row::make($rowModel);
+
+        return $this->tableObject->$methodName($iCell, $iRow);
     }
 
 
@@ -618,10 +644,13 @@ class Table extends LivewireComponent
      * @internal
      * 
      */
-    public function sortColumn(string $columnName)
+    public function sortColumn(int $columnIndex)
     {
-        $this->sort = $this->sort == 1 || $this->sort == 0 ? 2 : 1;
-        $this->sortedColumn = $columnName;
+        $iColumn            = $this->tableObject->tableSettings->columns->at($columnIndex);
+        $useColumn          = $iColumn->isRelationship() ? Str::snake($iColumn->columnTitle) : $iColumn->databaseColumnName;
+        $this->sort         = $this->sort == 1 || $this->sort == 0 ? 2 : 1;
+        
+        $this->sortedColumn = $useColumn;
         
         // Forces system not to order anymore by drag and drop ordering column
         $this->dragDropUseColumn  = '';
@@ -784,12 +813,15 @@ class Table extends LivewireComponent
      */
     public function internalExport()
     {
-        $binder = fn($methodName, Model $item) => $this->binder($methodName, $item);
-
+        $binder = fn($methodName, IColumn $column, Model $item) => $this->binder($methodName, $column, $item);
+        
+        $modelReflection = new ReflectionClass($this->model);
+        $modelname = $modelReflection->getShortName();
+        
         return $this->tableObject->onExport(
             new ExportEventArgs(
                 $this->tableObject->tableSettings->columns, 
-                new ExportSettings(),
+                new ExportSettings($modelname),
                 $this->execQuery(false, true),
                 $binder,
                 $this->formatters,
@@ -980,10 +1012,10 @@ class Table extends LivewireComponent
     }
     
 
-    public function cellHtmlOutput(IColumn $column, Model|stdClass $rowModel)
+    public function cellHtmlOutput(IColumn $column, Model $rowModel)
     {
         $formatter = null;
-
+        
         $iCell = Cell::make($column, $rowModel);
         $iRow = Row::make($rowModel);
         
@@ -998,6 +1030,7 @@ class Table extends LivewireComponent
             return $this->tableObject->{$formatter}( $iCell, $iRow );
         }
         else {
+            
             return Column::cellValue($column, $iCell, $iRow);
         }
     }

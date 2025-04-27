@@ -35,6 +35,9 @@ final class Column implements IColumn, IColumnRenderer
         if(empty($this->databaseColumnName)) {
             $this->databaseColumnName = Str::snake($columnTitle);
         }
+
+        // Exportable by default
+        ColumnSettingFlags::addFlag($this->settings, ColumnSettingFlags::EXPORTABLE);
     }
 
     public function withSettings(ColumnSettingFlags ...$moreSettings)
@@ -182,6 +185,11 @@ final class Column implements IColumn, IColumnRenderer
             return route($column->mappedRoute->route, $routeParams);
         }
         return '##';
+    }
+
+    public function isRelationship() : bool
+    {
+        return self::columnIsRelationship($this);
     }
 
     public static function columnIsRelationship( IColumn|string $column )

@@ -44,4 +44,6 @@ interface IColumn
 
     
     public int $columnIndex {get; set;}
+
+    public function isRelationship() : bool;
 }

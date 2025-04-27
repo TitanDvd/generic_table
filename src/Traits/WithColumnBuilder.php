@@ -45,9 +45,24 @@ trait WithColumnBuilder
         return $this;
     }
 
+    /**
+     * 
+     * @deprecated Use notExportable instead
+     * 
+     */
     public function exportable()
     {
-        $this->withSettings(ColumnSettingFlags::EXPORTABLE);
+        if(!ColumnSettingFlags::hasFlag($this->settings, ColumnSettingFlags::EXPORTABLE)) {
+            $this->withSettings(ColumnSettingFlags::EXPORTABLE);
+        }
+        return $this;
+    }
+
+    public function notExportable()
+    {
+        if(ColumnSettingFlags::hasFlag($this->settings, ColumnSettingFlags::EXPORTABLE)) {
+            ColumnSettingFlags::removeFlag($this->settings, ColumnSettingFlags::EXPORTABLE);
+        }
         return $this;
     }
 
