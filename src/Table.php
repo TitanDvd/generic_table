@@ -605,7 +605,7 @@ class Table extends LivewireComponent
      * @internal
      * 
      */
-    final protected function binder($methodName, IColumn $column, Model $rowModel) : string
+    final protected function binder($methodName, IColumn $column, Model|stdClass $rowModel) : string
     {
         $iCell = Cell::make($column, $rowModel);
         $iRow = Row::make($rowModel);
@@ -820,7 +820,7 @@ class Table extends LivewireComponent
      */
     public function internalExport()
     {
-        $binder = fn($methodName, IColumn $column, Model $item) => $this->binder($methodName, $column, $item);
+        $binder = fn($methodName, IColumn $column, Model|stdClass $item) => $this->binder($methodName, $column, $item);
         
         $modelReflection = new ReflectionClass($this->model);
         $modelname = $modelReflection->getShortName();
