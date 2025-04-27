@@ -91,18 +91,7 @@ trait WithDateFilters
         }
 
         if(isset($dateRange)) {
-            if(Str::contains($jsonObj->column, '.')) {
-                $lastDotPosition = strrpos($jsonObj->column, '.');
-                $relationship = substr($jsonObj->column, 0, $lastDotPosition);
-                $column = substr($jsonObj->column, $lastDotPosition + 1);
-    
-                $query->whereHas($relationship, function($q) use($column, $dateRange) {
-                    $q->whereBetween($column, $dateRange);
-                });
-            }
-            else {
-                $query->whereBetween($jsonObj->column, $dateRange);
-            }
+            $query->whereBetween($jsonObj->column, $dateRange);
         }
     }
 

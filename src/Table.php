@@ -363,13 +363,11 @@ class Table extends LivewireComponent
     
     private function execQuery(bool $paginate = true, bool $returnQueryBuilder = false): \Illuminate\Database\Eloquent\Builder|Builder|Collection|LengthAwarePaginator
     {
-        $columnSelection = $this->makeSqlSelectionFromColumns();
-
         $relationships = $this->columnsRelationships();
         
         $modelTableName = $this->model->getTable();
         
-        $query = DB::query()->from($modelTableName)->select(...$columnSelection);
+        $query = DB::query()->from($modelTableName);
 
         if($this->tableObject instanceof IEvent) {
             
@@ -384,21 +382,19 @@ class Table extends LivewireComponent
         
         $this->buildQuery($relationships, $query);
 
-        $query = $this->model->newQuery()->from($query);
-
         if($this->searchKeyWord != '') {
 
-            $query->orWhere(function($q) {
+            $query->having(function($q) {
                     
                 foreach ($this->searchByColumns as $columnIndex => $shouldUse) {
                     
                     if($shouldUse == true) {
                         $columnInterface = $this->tableObject->tableSettings->columns->at($columnIndex);
                         if($columnInterface->isRelationship()) {
-                            $q->orWhere(Str::snake($columnInterface->columnTitle),'like', "%{$this->searchKeyWord}%");
+                            $q->having(Str::snake($columnInterface->columnTitle),'like', "%{$this->searchKeyWord}%");
                         }
                         else {
-                            $q->orWhere($columnInterface->databaseColumnName,'like', "%{$this->searchKeyWord}%");
+                            $q->having($columnInterface->databaseColumnName,'like', "%{$this->searchKeyWord}%");
                         }
                         
                     }
@@ -407,6 +403,23 @@ class Table extends LivewireComponent
             });
         }
         
+        $this->applySingleSelectionFilterToQuery($query);
+        
+        $this->applyMultiSelectionFilterToQuery($query);
+
+        $this->applyDateFilterToQuery($query);
+
+        if($this->tableObject instanceof IEvent) {
+
+            $eventArgs = new DatabaseEvent(
+                DatabaseEventQueryState::ENDS,
+                $query,
+                $this->injectedArguments
+            );
+
+            $this->tableObject->dispatchCallback($eventArgs);
+        }
+
         if($this->dragDropUseColumn != '' && $this->useDragDropReordering == true) {
             $this->sortedColumn = $this->dragDropUseColumn;
             $this->sort = 1;
@@ -430,23 +443,6 @@ class Table extends LivewireComponent
                     break;
                 }
             }
-        }
-
-        $this->applySingleSelectionFilterToQuery($query);
-        
-        $this->applyMultiSelectionFilterToQuery($query);
-
-        $this->applyDateFilterToQuery($query);
-
-        if($this->tableObject instanceof IEvent) {
-
-            $eventArgs = new DatabaseEvent(
-                DatabaseEventQueryState::ENDS,
-                $query,
-                $this->injectedArguments
-            );
-
-            $this->tableObject->dispatchCallback($eventArgs);
         }
 
         if($paginate == true)
