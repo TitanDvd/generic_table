@@ -2,7 +2,6 @@
 
 namespace Mmt\GenericTable\Interfaces;
 
-use Illuminate\Database\Eloquent\Model;
 use Mmt\GenericTable\Attributes\MappedRoute;
 
 

@@ -287,7 +287,7 @@ class Table extends LivewireComponent
         return view('generic_table::main');
     }
     
-    private function buildQuery(array $relationShips, Builder &$query)
+    private function buildQuery(array $relationShips, &$query)
     {
         $joined = [];
         $selectedColumns = [];
@@ -363,11 +363,11 @@ class Table extends LivewireComponent
     
     private function execQuery(bool $paginate = true, bool $returnQueryBuilder = false): \Illuminate\Database\Eloquent\Builder|Builder|Collection|LengthAwarePaginator
     {
+        $selection = $this->makeSqlSelectionFromColumns();
+
         $relationships = $this->columnsRelationships();
         
-        $modelTableName = $this->model->getTable();
-        
-        $query = DB::query()->from($modelTableName);
+        $query = $this->model->newQuery()->select($selection);
 
         if($this->tableObject instanceof IEvent) {
             
@@ -562,7 +562,6 @@ class Table extends LivewireComponent
             $table = $this->model->getTable();
 
             foreach ($this->tableObject->tableSettings->columns as $column) {
-
                 /**
                  * 
                  * If the column has the EMPTY flag, the selection will
@@ -572,8 +571,8 @@ class Table extends LivewireComponent
                 if(ColumnSettingFlags::hasFlag($column->settings, ColumnSettingFlags::EMPTY)) {
                     $selection[] = DB::raw('"" as "' . $column->databaseColumnName .'"');
                 }
-                else if(Column::columnIsNotRelationship($column)) {
-                    $selection[] = "$table.$column->databaseColumnName";
+                else if($column->isRelationship() == false) {
+                    $selection[] = "{$table}.{$column->databaseColumnName}";
                 }
             }
             
