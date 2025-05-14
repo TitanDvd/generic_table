@@ -296,70 +296,72 @@ class Table extends LivewireComponent
         foreach ($relationShips as $relationshipPath => $columnInterface) {
             
             $relatedTableModel = $this->model;
-            
-            //! La variable column tiene que formar parte de la seleccion
-            [$relationship, $column] = Column::getRelationshipPathAndColumn($relationshipPath);
 
-            // La variable relationship aun puede contener una ruta de relaciones
+            [$relationship, $column] = Column::getRelationshipPathAndColumn($relationshipPath);
             $relationshipSlots = explode('.', $relationship);
 
+            $pathAlias = '';
+            $currentAlias = $this->model->getTable(); // Empezamos con la tabla base
+
             foreach ($relationshipSlots as $relationshipMethodname) {
-                
-                $laravelRelationShipMethodResult = $relatedTableModel->{$relationshipMethodname}();
 
-                if($laravelRelationShipMethodResult instanceof BelongsTo) {
-                    // Related
-                    $relatedTableModel = $laravelRelationShipMethodResult->getRelated();
-                    $relatedTablePrimaryKeyName = $relatedTableModel->getKeyName();
+                $laravelRelation = $relatedTableModel->{$relationshipMethodname}();
+
+                $relationPathKey = $pathAlias ? "{$pathAlias}_{$relationshipMethodname}" : $relationshipMethodname;
+                $tableAlias = 't_' . Str::snake($relationPathKey);
+
+                if ($laravelRelation instanceof BelongsTo) {
+
+                    $relatedTableModel = $laravelRelation->getRelated();
                     $relatedTableName = $relatedTableModel->getTable();
-                    
-                    // Local
-                    $foreignKey = $laravelRelationShipMethodResult->getForeignKeyName();
-                    $currentTable = $laravelRelationShipMethodResult->getChild();
-                    $currentTableName = $currentTable->getTable();
-                    
-                    $joinToStr  = "{$relatedTableName}.{$relatedTablePrimaryKeyName}";
+                    $relatedKey = $relatedTableModel->getKeyName();
 
-                    if(!in_array($joinToStr, $joined)) {
-                        $str .= "JOIN $relatedTableName ON $joinToStr = {$currentTableName}.{$foreignKey}\r\n";
-                        $joined[]   = $joinToStr;
-                        $query->leftJoin($relatedTableName, $joinToStr, "{$currentTableName}.{$foreignKey}");
+                    $foreignKey = $laravelRelation->getForeignKeyName();
+
+                    $joinKey = "{$tableAlias}_{$relatedKey}";
+                    if (!in_array($joinKey, $joined)) {
+                        $query->leftJoin("{$relatedTableName} as {$tableAlias}", "{$tableAlias}.{$relatedKey}", '=', "{$currentAlias}.{$foreignKey}");
+                        $joined[] = $joinKey;
+                        $str .= "JOIN {$relatedTableName} AS {$tableAlias} ON {$tableAlias}.{$relatedKey} = {$currentAlias}.{$foreignKey}\r\n";
                     }
-                }
-                else if($laravelRelationShipMethodResult instanceof HasOne) {
-                    // Local
-                    $localKey = $laravelRelationShipMethodResult->getForeignKeyName();
-                    $currentTableModel = $laravelRelationShipMethodResult->getParent();
-                    $currentTableName = $currentTableModel->getTable();
 
-                    // Related
-                    $relatedTableModel = $laravelRelationShipMethodResult->getRelated();
-                    $relatedTablePrimaryKey = $relatedTableModel->getKeyName();
+                    $currentAlias = $tableAlias;
+
+                } 
+                elseif ($laravelRelation instanceof HasOne) {
+
+                    $relatedTableModel = $laravelRelation->getRelated();
                     $relatedTableName = $relatedTableModel->getTable();
+                    $relatedKey = $relatedTableModel->getKeyName();
 
-                    $joinToStr = "{$relatedTableName}.{$localKey}";
-                    
-                    if(!in_array($joinToStr, $joined)) {
-                        $str .= "JOIN $relatedTableName ON $joinToStr = {$currentTableName}.{$relatedTablePrimaryKey}\r\n";
-                        $joined[]  = $joinToStr;
-                        $query->leftJoin($relatedTableName, $joinToStr, "{$currentTableName}.{$relatedTablePrimaryKey}");
+                    $localKey = $laravelRelation->getForeignKeyName();
+                    $joinKey = "{$tableAlias}_{$localKey}";
+
+                    if (!in_array($joinKey, $joined)) {
+                        $query->leftJoin("{$relatedTableName} as {$tableAlias}", "{$tableAlias}.{$localKey}", '=', "{$currentAlias}.{$relatedKey}");
+                        $joined[] = $joinKey;
+                        $str .= "JOIN {$relatedTableName} AS {$tableAlias} ON {$tableAlias}.{$localKey} = {$currentAlias}.{$relatedKey}\r\n";
                     }
-                    
+
+                    $currentAlias = $tableAlias;
                 }
+
+                $pathAlias = $relationPathKey;
             }
 
-            if(isset($relatedTableName)) {
+            if (isset($tableAlias)) {
                 $alias = Str::snake($columnInterface->columnTitle);
-                $columnSelection = "{$relatedTableName}.{$column} as {$alias}";
-                if(!in_array($columnSelection, $selectedColumns)) {
+                $columnSelection = "{$tableAlias}.{$column} as {$alias}";
+                if (!in_array($columnSelection, $selectedColumns)) {
                     $selectedColumns[] = $columnSelection;
                 }
             }
-            
         }
-        
+
         $query->addSelect($selectedColumns);
     }
+
+
     
     private function execQuery(bool $paginate = true, bool $returnQueryBuilder = false): \Illuminate\Database\Eloquent\Builder|Builder|Collection|LengthAwarePaginator
     {
@@ -572,7 +574,10 @@ class Table extends LivewireComponent
                     $selection[] = DB::raw('"" as "' . $column->databaseColumnName .'"');
                 }
                 else if($column->isRelationship() == false) {
-                    $selection[] = "{$table}.{$column->databaseColumnName}";
+                    $selectionStr = "{$table}.{$column->databaseColumnName}";
+                    if(!in_array($selectionStr, $selection)) {
+                        $selection[] = $selectionStr;
+                    }
                 }
             }
             
