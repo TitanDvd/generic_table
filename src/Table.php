@@ -387,16 +387,18 @@ class Table extends LivewireComponent
         if($this->searchKeyWord != '') {
 
             $query->having(function($q) {
-                    
+                
+                $searchKeyWordTrimed = trim($this->searchKeyWord);
+
                 foreach ($this->searchByColumns as $columnIndex => $shouldUse) {
                     
                     if($shouldUse == true) {
                         $columnInterface = $this->tableObject->tableSettings->columns->at($columnIndex);
                         if($columnInterface->isRelationship()) {
-                            $q->having(Str::snake($columnInterface->columnTitle),'like', "%{$this->searchKeyWord}%");
+                            $q->having(Str::snake($columnInterface->columnTitle),'like', "%{$searchKeyWordTrimed}%");
                         }
                         else {
-                            $q->having($columnInterface->databaseColumnName,'like', "%{$this->searchKeyWord}%");
+                            $q->having($columnInterface->databaseColumnName,'like', "%{$searchKeyWordTrimed}%");
                         }
                         
                     }

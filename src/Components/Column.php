@@ -170,7 +170,7 @@ final class Column implements IColumn, IColumnRenderer
             }
 
             return <<<HTML
-                <a href = "$route">$linkLabel</a>
+                <a class="text-decoration-underline" href = "$route">$linkLabel</a>
             HTML;
         }
         else {
