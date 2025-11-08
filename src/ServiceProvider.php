@@ -22,7 +22,7 @@ class ServiceProvider extends SupportServiceProvider
                 throw new Exception('You need to specify fully qualified class name (FQCN) in order to mount the generic component via blade directive. Example: `@generic_component(FQCN:string, autoLoadAttributes:bool)`');
             }
             
-            $slots = explode(',', $expression);
+            $slots = explode(',', $expression, 2);
             
             $tableFqn = trim($slots[0]);
             $args = isset($slots[1]) ? trim($slots[1]) : '[]';
