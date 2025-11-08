@@ -134,7 +134,7 @@ class Table extends LivewireComponent
     {
         get {
             if(!isset($this->tableObject)) {
-                $this->tableObject = new $this->tableClass;
+                $this->tableObject = new $this->tableClass($this->injectedArguments);
             }
             return $this->tableObject;
         }
